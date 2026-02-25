@@ -2,6 +2,11 @@
 
 from fastapi import FastAPI
 
+from app.middleware import RequestLoggingMiddleware
+from app.observability.logging import setup_logging
+
+setup_logging()
+
 app = FastAPI(
     title="FastAPI Monitoring and Observability",
     version="1.0.0",
@@ -31,6 +36,7 @@ app = FastAPI(
         },
     ],
 )
+app.add_middleware(RequestLoggingMiddleware)
 
 
 @app.get(

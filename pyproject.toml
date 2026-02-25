@@ -6,15 +6,16 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi[standard]>=0.133.0",
+    "loguru>=0.7.3",
     "mypy>=1.19.1",
     "pre-commit>=4.5.1",
+    "pydantic-settings>=2.13.1",
     "ruff>=0.15.2",
 ]
 
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-exclude = ["alembic"]
 
 [tool.ruff.format]
 quote-style = "double"
