@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 # Paths to exclude from logging to reduce noise
 EXCLUDED_PATHS = {"/openapi.json", "/docs", "/redoc"}
@@ -31,32 +31,37 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         if request.url.path in EXCLUDED_PATHS:
             return await call_next(request)
 
-        status_code = 500  # Default to 500 in case of unhandled exceptions
         client_host = request.client.host if request.client else "unknown"
+
+        # Use route path for logging to avoid logging query parameters
+        route = request.scope.get("route")
+        route_path = route.path if route else request.url.path
+
+        # Bind relevant information to the logger for structured logging
+        log = logger.bind(
+            http_method=request.method,
+            http_path=route_path,
+            client_ip=client_host,
+        )
 
         start = time.perf_counter()
         try:
             response = await call_next(request)
-            status_code = response.status_code
-            return response
-        finally:
             duration_ms = (time.perf_counter() - start) * 1000.0
 
-            # Use route path for logging to avoid logging query parameters
-            route = request.scope.get("route")
-            route_path = route.path if route else request.url.path
+            # Update status_code binding with actual response status
+            log = log.bind(http_status_code=response.status_code, duration_ms=duration_ms)
 
-            # Bind relevant information to the logger for structured logging
-            log = logger.bind(
-                method=request.method,
-                path=route_path,
-                status_code=status_code,
-                duration_ms=round(duration_ms, 2),
-                client_host=client_host,
-            )
-
-            log_message = "http_request"
-            if status_code >= 500:
-                log.error(log_message)
+            # Log at different levels based on status code
+            if response.status_code >= 500:
+                log.error("http_request")
+            elif response.status_code >= 400:
+                log.warning("http_request")
             else:
-                log.info(log_message)
+                log.info("http_request")
+            return response
+        except Exception:
+            # In case of unhandled exceptions, log the error with status code 500
+            duration_ms = (time.perf_counter() - start) * 1000.0
+            log.bind(http_status_code=500, duration_ms=duration_ms).exception("unhandled_exception")
+            return JSONResponse(content={"detail": "Internal Server Error"}, status_code=500)

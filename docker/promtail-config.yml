@@ -45,14 +45,25 @@ scrape_configs:
                 expressions:
                   level: record.level.name
                   logger: record.name
-                  method: record.extra.method
-                  path: record.extra.path
-                  status_code: record.extra.status_code
+                  timestamp: record.time.timestamp
+                  http_method: record.extra.http_method
+                  http_path: record.extra.http_path
+                  http_status_code: record.extra.http_status
+                  client_ip: record.extra.client_ip
+                  environment: record.extra.environment
+                  version: record.extra.version
+
+            # Set timestamp from log entry
+            - timestamp:
+                source: timestamp
+                format: Unix
 
             # Add labels for indexing (low-cardinality only!)
             - labels:
                 level:
                 logger:
-                method:
-                status_code:
-                path:
+                http_method:
+                http_status_code:
+                client_ip:
+                environment:
+                version:

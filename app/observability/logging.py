@@ -46,6 +46,8 @@ def setup_logging() -> None:
     # Remove default Loguru handler
     logger.remove()
 
+    logger.configure(extra={"version": config.api_version, "environment": config.environment})
+
     # Format for logs using UTC timestamps
     format = (
         "<green>{time:YYYY-MM-DD HH:mm:ss!UTC}</green> | "
@@ -69,7 +71,7 @@ def setup_logging() -> None:
     # File sink (rotation)
     if log_to_file:
         logger.add(
-            "logs/app.log",
+            "logs/app-{time}.log",
             level=log_level,
             rotation="5 MB",
             retention=5,

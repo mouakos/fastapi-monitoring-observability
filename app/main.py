@@ -2,14 +2,16 @@
 
 from fastapi import FastAPI
 
+from app.api import router
 from app.middleware import RequestLoggingMiddleware
 from app.observability.logging import setup_logging
+from app.settings import config
 
 setup_logging()
 
 app = FastAPI(
     title="FastAPI Monitoring and Observability",
-    version="1.0.0",
+    version=config.api_version,
     servers=[],
     docs_url="/docs",
     redoc_url="/redoc",
@@ -29,41 +31,10 @@ app = FastAPI(
         "tryItOutEnabled": True,
         "onComplete": "Ok",
     },
-    openapi_tags=[
-        {
-            "name": "Root",
-            "description": "API root endpoint with welcome message.",
-        },
-        {
-            "name": "Health",
-            "description": "Endpoints related to application health checks.",
-        },
-    ],
 )
+# Add custom request logging middleware
 app.add_middleware(RequestLoggingMiddleware)
 
 
-@app.get(
-    "/",
-    response_model=dict[str, str],
-    summary="Root Endpoint",
-    description="Returns a welcome message.",
-    tags=["Root"],
-)
-def read_root() -> dict[str, str]:
-    """Root endpoint that returns a simple JSON response."""
-    return {
-        "message": "Welcome to the FastAPI application! Please visit /docs for API documentation."
-    }
-
-
-@app.get(
-    "/health",
-    response_model=dict[str, str],
-    summary="Health Check",
-    description="Returns the health status of the application.",
-    tags=["Health"],
-)
-def health_check() -> dict[str, str]:
-    """Health check endpoint that returns the application's health status."""
-    return {"status": "healthy"}
+# Add API routes
+app.include_router(router)
