@@ -46,9 +46,9 @@ def setup_logging() -> None:
     # Remove default Loguru handler
     logger.remove()
 
-    # Format for logs
-    text_format = (
-        "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+    # Format for logs using UTC timestamps
+    format = (
+        "<green>{time:YYYY-MM-DD HH:mm:ss!UTC}</green> | "
         "<level>{level: <8}</level> | "
         "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
         "<level>{message}</level> - "
@@ -62,7 +62,7 @@ def setup_logging() -> None:
         enqueue=True,
         backtrace=False,
         diagnose=False,
-        format=text_format,
+        format=format,
         serialize=serialize,
     )
 
@@ -77,7 +77,7 @@ def setup_logging() -> None:
             enqueue=True,
             backtrace=False,
             diagnose=False,
-            format=text_format,
+            format=format,
             serialize=serialize,
         )
 
