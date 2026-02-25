@@ -1,0 +1,28 @@
+repos:
+  # Run the linter.
+  - repo: local
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+        name: ruff-check
+        entry: .venv/Scripts/ruff.exe check
+        language: system
+        types: [python]
+
+  # Run the formatter.
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff-format
+        entry: .venv/Scripts/ruff.exe format
+        language: system
+        types: [python]
+
+  # Type checking with MyPy
+  - repo: local
+    hooks:
+      - id: mypy-check
+        name: mypy-check
+        entry: .venv/Scripts/mypy.exe
+        language: system
+        types: [python]
