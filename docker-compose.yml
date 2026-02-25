@@ -1,0 +1,79 @@
+services:
+  fastapi-app:
+    build: .
+    container_name: fastapi-app
+    environment:
+      LOG_FORMAT: json
+      LOG_LEVEL: INFO
+      LOG_TO_FILE: false
+    ports:
+      - "8000:8000"
+    networks:
+      - observability
+
+  # ========================
+  # OBSERVABILITY STACK (LGTM)
+  # ========================
+
+  # Loki: Log aggregation system (Logs)
+  # Receives logs from Promtail and stores them for querying
+  loki:
+    image: grafana/loki:3.6.7
+    container_name: loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./docker/loki-config.yml:/etc/loki/config.yml:ro
+      - loki-data:/tmp/loki
+    command:
+      - "-config.file=/etc/loki/config.yml"
+    networks:
+      - observability
+
+  # Grafana: Observability dashboard and visualization (UI)
+  # Provides unified interface for logs, metrics, and traces
+  # Access at http://localhost:3000 (admin/admin)
+  grafana:
+    image: grafana/grafana:12.3.3
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - loki
+    networks:
+      - observability
+
+  # Promtail: Log shipping agent
+  # Collects logs from Docker containers and forwards to Loki
+  promtail:
+    image: grafana/promtail:3.6.7
+    container_name: promtail
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./docker/promtail-config.yml:/etc/promtail/config.yml:ro
+      # Promtail lit les logs Docker (stdout des containers)
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail-positions:/tmp
+    depends_on:
+      - loki
+    networks:
+      - observability
+
+# Persistent volumes for data storage
+volumes:
+  grafana-data: # Grafana dashboards, datasources, and settings
+  loki-data: # Loki log indexes and chunks
+  promtail-positions: # Promtail positions data
+
+# Network for observability stack
+networks:
+  observability:
+    driver: bridge

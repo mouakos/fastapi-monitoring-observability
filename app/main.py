@@ -34,6 +34,10 @@ app = FastAPI(
             "name": "Root",
             "description": "API root endpoint with welcome message.",
         },
+        {
+            "name": "Health",
+            "description": "Endpoints related to application health checks.",
+        },
     ],
 )
 app.add_middleware(RequestLoggingMiddleware)
@@ -51,3 +55,15 @@ def read_root() -> dict[str, str]:
     return {
         "message": "Welcome to the FastAPI application! Please visit /docs for API documentation."
     }
+
+
+@app.get(
+    "/health",
+    response_model=dict[str, str],
+    summary="Health Check",
+    description="Returns the health status of the application.",
+    tags=["Health"],
+)
+def health_check() -> dict[str, str]:
+    """Health check endpoint that returns the application's health status."""
+    return {"status": "healthy"}

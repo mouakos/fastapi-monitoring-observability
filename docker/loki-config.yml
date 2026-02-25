@@ -1,0 +1,39 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100 # Promtail pushes logs here, Grafana queries here
+
+# Common configuration - shared settings across all Loki components
+common:
+  path_prefix: /loki # Base directory for all Loki data
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks # Store compressed log chunks
+      rules_directory: /loki/rules # Store alerting and recording rules
+  replication_factor: 1 # Number of replicas (1 = no replication, single instance)
+  ring:
+    kvstore:
+      store: inmemory # Use in-memory storage for ring coordination (resets on restart)
+
+# Schema configuration - defines how logs are indexed and stored
+schema_config:
+  configs:
+    - from: 2024-01-01 # Schema start date
+      store: tsdb # Use TSDB (Time Series Database) for index storage
+      object_store: filesystem # Store log chunks on local filesystem
+      schema: v13 # Latest schema version (better performance)
+      index:
+        prefix: index_ # Prefix for index files
+        period: 24h # Create new index files every 24 hours
+
+storage_config:
+  boltdb_shipper:
+    active_index_directory: /loki/index # Directory for active index files
+    cache_location: /loki/cache # Cache for index queries (improves query performance)
+
+limits_config:
+  retention_period: 168h # Retain logs for 7 days (168 hours)
+  volume_enabled: true # Enable volume-based retention (delete old data when volume limit is reached)
+
+compactor:
+  working_directory: /loki/compactor # Directory for compactor to store intermediate files

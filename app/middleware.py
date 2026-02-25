@@ -8,6 +8,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
+# Paths to exclude from logging to reduce noise
+EXCLUDED_PATHS = {"/openapi.json", "/docs", "/redoc"}
+
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Middleware to log incoming HTTP requests with method, path, status code, and duration."""
@@ -24,10 +27,14 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         Returns:
             Response: The HTTP response from the next handler.
         """
-        start = time.perf_counter()
+        # Skip logging for excluded paths
+        if request.url.path in EXCLUDED_PATHS:
+            return await call_next(request)
+
         status_code = 500  # Default to 500 in case of unhandled exceptions
         client_host = request.client.host if request.client else "unknown"
 
+        start = time.perf_counter()
         try:
             response = await call_next(request)
             status_code = response.status_code
@@ -38,7 +45,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             # Use route path for logging to avoid logging query parameters
             route = request.scope.get("route")
             route_path = route.path if route else request.url.path
-            log_message = "http_request"
+
+            # Bind relevant information to the logger for structured logging
             log = logger.bind(
                 method=request.method,
                 path=route_path,
@@ -46,6 +54,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 duration_ms=round(duration_ms, 2),
                 client_host=client_host,
             )
+
+            log_message = "http_request"
             if status_code >= 500:
                 log.error(log_message)
             else:

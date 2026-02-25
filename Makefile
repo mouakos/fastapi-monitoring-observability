@@ -1,4 +1,4 @@
-.PHONY: help install sync run dev test lint format mypy pre-commit docker-up docker-down logs clean
+.PHONY: help install sync run dev test lint format mypy pre-commit docker-up docker-down docker-build docker-logs docker-restart clean
 
 # Default target
 help:
@@ -11,6 +11,11 @@ help:
 	@echo "  make format         Format code"
 	@echo "  make mypy           Run type checking with mypy"
 	@echo "  make pre-commit     Run pre-commit hooks"
+	@echo "  make docker-up      Start all containers"
+	@echo "  make docker-down    Stop all containers"
+	@echo "  make docker-build   Build Docker images"
+	@echo "  make docker-logs    View container logs"
+	@echo "  make docker-restart Restart all containers"
 	@echo "  make clean          Clean cache files"
 
 install:
@@ -36,6 +41,22 @@ mypy:
 
 pre-commit:
 	uv run pre-commit run --all-files
+
+# Docker commands
+docker-up:
+	docker compose up -d
+
+docker-down:
+	docker compose down
+
+docker-build:
+	docker compose build
+
+docker-logs:
+	docker compose logs -f
+
+docker-restart:
+	docker compose restart
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
