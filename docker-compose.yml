@@ -9,8 +9,6 @@ services:
       OTEL_SERVICE_NAME: fastapi-app
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "otel-collector:4317"
       OTEL_SDK_DISABLED: false
-      OTEL_TRACES_SAMPLER: traceidratio
-      OTEL_TRACES_SAMPLER_ARG: 1.0 # value between 0.0 (no traces) and 1.0 (all traces)
     ports:
       - "8000:8000"
     networks:
@@ -80,8 +78,7 @@ services:
       - ./docker/tempo-config.yml:/etc/tempo/config.yml:ro
       - tempo-data:/var/tempo
     ports:
-      - "3200:3200" # tempo query
-      # - "4317:4317" # OTLP gRPC (optional if you send directly)
+      - "3200:3200"
     depends_on:
       - grafana
     networks:

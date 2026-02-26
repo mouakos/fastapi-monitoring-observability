@@ -11,6 +11,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
+from app.constants import EXCLUDED_PATHS
 from app.settings import config
 
 
@@ -53,4 +54,9 @@ def setup_otlp_tracing(app: FastAPI) -> None:
     # This adds trace_id and span_id to all log records if there is an active span
     logger.configure(patcher=inject_trace_context_to_logger)  # type: ignore [arg-type]
 
-    FastAPIInstrumentor.instrument_app(app, tracer_provider=provider)
+    FastAPIInstrumentor.instrument_app(
+        app,
+        tracer_provider=provider,
+        excluded_urls=",".join(EXCLUDED_PATHS),
+        exclude_spans=["receive", "send"],
+    )

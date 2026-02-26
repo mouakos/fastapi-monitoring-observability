@@ -1,7 +1,11 @@
 """This is the main entry point for the FastAPI application."""
 
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from loguru import logger
 
 from app.api import router
 from app.middleware import RequestLoggingMiddleware
@@ -13,7 +17,21 @@ load_dotenv()
 
 setup_logging()
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
+    """Lifespan function to perform startup and shutdown tasks."""
+    logger.info("Application is starting up...")
+    # Perform any startup tasks here (e.g., connect to database, initialize resources)
+    logger.info("Application startup completed.")
+    yield
+    logger.info("Application is shutting down...")
+    # Perform any shutdown tasks here (e.g., close database connections, clean up resources)
+    logger.info("Application shutting down completed.")
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="FastAPI Monitoring and Observability",
     version=config.api_version,
     servers=[],
@@ -36,11 +54,12 @@ app = FastAPI(
         "onComplete": "Ok",
     },
 )
+# Set up OpenTelemetry tracing
+setup_otlp_tracing(app)
+
 # Add custom request logging middleware
 app.add_middleware(RequestLoggingMiddleware)
 
-# Set up OpenTelemetry tracing
-setup_otlp_tracing(app)
 
 # Add API routes
 app.include_router(router)

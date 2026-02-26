@@ -48,19 +48,22 @@ scrape_configs:
                   timestamp: record.time.timestamp
                   http_method: record.extra.http_method
                   http_path: record.extra.http_path
-                  http_status_code: record.extra.http_status
+                  http_status_code: record.extra.http_status_code
                   client_ip: record.extra.client_ip
                   environment: record.extra.environment
                   version: record.extra.version
                   trace_id: record.extra.trace_id
+                  request_id: record.extra.request_id
 
             # Add labels for indexing
             - labels:
                 level:
                 logger:
                 http_method:
-                http_status_code:
                 client_ip:
                 environment:
                 version:
                 trace_id:
+                http_path:
+                http_status_code:
+                request_id:

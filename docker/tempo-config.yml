@@ -8,6 +8,8 @@ distributor:
       protocols:
         grpc:
           endpoint: "0.0.0.0:4317" # Accept gRPC traces from all interfaces
+        http:
+          endpoint: "0.0.0.0:4318" # Accept HTTP traces from all interfaces
 
 storage:
   trace:

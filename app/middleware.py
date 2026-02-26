@@ -8,8 +8,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-# Paths to exclude from logging to reduce noise
-EXCLUDED_PATHS = {"/openapi.json", "/docs", "/redoc"}
+from app.constants import EXCLUDED_PATHS
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -31,12 +30,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         if request.url.path in EXCLUDED_PATHS:
             return await call_next(request)
 
+        # Use Loguru's contextualize to add request_id to the logger context for this request
+
         client_host = request.client.host if request.client else "unknown"
-
-        # Use route path for logging to avoid logging query parameters
-        route = request.scope.get("route")
-        route_path = route.path if route else request.url.path
-
+        route_path = self._get_path_template(request)
         user_agent = request.headers.get("user-agent")
 
         # Bind relevant information to the logger for structured logging
@@ -62,9 +59,22 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 log.warning("http_request")
             else:
                 log.info("http_request")
+
             return response
         except Exception:
             # In case of unhandled exceptions, log the error with status code 500
             duration_ms = round((time.perf_counter() - start) * 1000.0, 2)
             log.bind(http_status_code=500, duration_ms=duration_ms).exception("unhandled_exception")
             return JSONResponse(content={"detail": "Internal Server Error"}, status_code=500)
+
+    def _get_path_template(self, request: Request) -> str:
+        """Get the route path template for the incoming HTTP request.
+
+        Args:
+            request (Request): The incoming HTTP request object.
+
+        Returns:
+            str: The route path template for the incoming HTTP request.
+        """
+        route = request.scope.get("route")
+        return route.path if route else request.url.path
