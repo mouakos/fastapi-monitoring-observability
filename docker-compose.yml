@@ -1,5 +1,4 @@
 services:
-
   # ========================
   # APPLICATION SERVICE
   # ========================
@@ -100,6 +99,7 @@ services:
     ports:
       - "4317:4317" # OTLP gRPC from app
       - "4318:4318" # OTLP HTTP (optional)
+      - "9464:9464" # Prometheus scraping
     depends_on:
       - tempo
       - prometheus

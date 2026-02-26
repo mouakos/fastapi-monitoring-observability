@@ -11,8 +11,8 @@ from app.api import router
 from app.error_handlers import register_exception_handlers
 from app.middleware import RequestLoggingMiddleware
 from app.observability.logging import setup_logging
-from app.observability.metrics import setup_otlp_metrics
-from app.observability.tracing import setup_otlp_tracing
+from app.observability.metrics_middleware import MetricsMiddleware
+from app.observability.otel import setup_otlp
 from app.settings import config
 
 load_dotenv()
@@ -57,8 +57,10 @@ app = FastAPI(
     },
 )
 # Set up OpenTelemetry tracing and metrics
-setup_otlp_tracing(app)
-setup_otlp_metrics()
+setup_otlp(app)
+
+# Add custom metrics middleware to track request metrics
+app.add_middleware(MetricsMiddleware)
 
 # Add custom request logging middleware
 app.add_middleware(RequestLoggingMiddleware)
