@@ -14,6 +14,10 @@ exporters:
     endpoint: tempo:4317
     tls:
       insecure: true
+    
+  prometheus:
+    endpoint: "0.0.0.0:9464" # Port for Prometheus scraping
+    namespace: "otel" # Optional: Prefix for metric names
 
 service:
   pipelines:
@@ -21,3 +25,8 @@ service:
       receivers: [otlp]
       processors: [batch]
       exporters: [otlp]
+  
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]

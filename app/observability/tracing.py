@@ -1,4 +1,4 @@
-"""Observability setup for the FastAPI application, including OpenTelemetry tracing configuration."""
+"""Tracing setup for the FastAPI application."""
 
 from typing import Any
 
@@ -7,12 +7,11 @@ from loguru import logger
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 from app.constants import EXCLUDED_PATHS
-from app.settings import config
+from app.observability.otel_resource import build_resource
 
 
 def inject_trace_context_to_logger(record: dict[str, Any]) -> None:
@@ -34,19 +33,12 @@ def inject_trace_context_to_logger(record: dict[str, Any]) -> None:
 
 
 def setup_otlp_tracing(app: FastAPI) -> None:
-    """Set up OpenTelemetry tracing for the FastAPI application using OTLP exporter using gRPC.
+    """Set up OpenTelemetry tracing for the FastAPI application using gRPC OTLP exporter.
 
     Args:
         app: The FastAPI application instance to instrument with OpenTelemetry tracing.
     """
-    resource = Resource.create(
-        {
-            "service.version": config.api_version,
-            "deployment.environment": config.environment,
-        }
-    )
-
-    provider = TracerProvider(resource=resource)
+    provider = TracerProvider(resource=build_resource())
     exporter = OTLPSpanExporter(insecure=True)
     provider.add_span_processor(BatchSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
