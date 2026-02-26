@@ -11,13 +11,31 @@ distributor:
         http:
           endpoint: "0.0.0.0:4318" # Accept HTTP traces from all interfaces
 
+# Metrics Generator - creates RED metrics from traces (Rate, Errors, Duration)
+metrics_generator:
+  storage:
+    path: /var/tempo/wal/generator # Store generator data
+  traces_storage:
+    path: /var/tempo/wal/ingester # Link to ingester's WAL for trace access
+  processor:
+    local_blocks:
+      filter_server_spans: false # Include server spans in metrics
+    service_graphs: {} # Generate service dependency graphs
+    span_metrics: {} # Generate span-level metrics (duration histograms)
+
 storage:
   trace:
     backend: local
     local:
       path: /var/tempo/traces
+    wal:
+      path: /var/tempo/wal/ingester
 
+# Per-tenant overrides (applies to all in single-tenant mode)
 overrides:
-  defaults:
-    metrics_generator:
-      processors: []
+  metrics_generator_processors: [
+      "service-graphs",
+      "span-metrics",
+      "local-blocks",
+    ] # Enable all metric processors
+

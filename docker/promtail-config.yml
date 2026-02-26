@@ -53,7 +53,6 @@ scrape_configs:
                   environment: record.extra.environment
                   version: record.extra.version
                   trace_id: record.extra.trace_id
-                  request_id: record.extra.request_id
 
             # Add labels for indexing
             - labels:
@@ -66,4 +65,3 @@ scrape_configs:
                 trace_id:
                 http_path:
                 http_status_code:
-                request_id:

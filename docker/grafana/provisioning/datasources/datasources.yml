@@ -6,8 +6,23 @@ datasources:
     access: proxy
     url: http://loki:3100
     isDefault: true
+    jsonData:
+      derivedFields:
+        - name: TraceID
+          datasourceUid: Tempo
+          matcherType: label
+          matcherRegex: trace_id
+          url: "$${__value.raw}"
 
   - name: Tempo
     type: tempo
     access: proxy
     url: http://tempo:3200
+    jsonData:
+      nodeGraph:
+        enabled: true
+      tracesToLogsV2:
+        customQuery: false
+        datasourceUid: Loki
+        filterBySpanID: false
+        filterByTraceID: true
