@@ -1,0 +1,21 @@
+server:
+  http_listen_port: 3200 # Grafana queries Tempo on this port
+
+# Distributor - receives incoming traces from applications
+distributor:
+  receivers:
+    otlp: # OpenTelemetry Protocol receiver
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317" # Accept gRPC traces from all interfaces
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /var/tempo/traces
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors: []

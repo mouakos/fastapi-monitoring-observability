@@ -15,10 +15,9 @@ class AppConfig(BaseSettings):
 
     api_version: str = Field(default="1.0.0", pattern=r"^\d+\.\d+\.\d+$")
     environment: Literal["development", "staging", "production"] = "development"
-    service_name: str = "fastapi-app"
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", case_sensitive=False
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
     )
 
 

@@ -6,6 +6,11 @@ services:
       LOG_FORMAT: json
       LOG_LEVEL: INFO
       LOG_TO_FILE: false
+      OTEL_SERVICE_NAME: fastapi-app
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "otel-collector:4317"
+      OTEL_SDK_DISABLED: false
+      OTEL_TRACES_SAMPLER: traceidratio
+      OTEL_TRACES_SAMPLER_ARG: 1.0 # value between 0.0 (no traces) and 1.0 (all traces)
     ports:
       - "8000:8000"
     networks:
@@ -67,11 +72,41 @@ services:
     networks:
       - observability
 
+  tempo:
+    image: grafana/tempo:2.10.1
+    container_name: tempo
+    command: ["-config.file=/etc/tempo/config.yml"]
+    volumes:
+      - ./docker/tempo-config.yml:/etc/tempo/config.yml:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "3200:3200" # tempo query
+      # - "4317:4317" # OTLP gRPC (optional if you send directly)
+    depends_on:
+      - grafana
+    networks:
+      - observability
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.146.1
+    container_name: otel-collector
+    command: ["--config=/etc/otelcol/config.yml"]
+    volumes:
+      - ./docker/otel-collector-config.yml:/etc/otelcol/config.yml:ro
+    ports:
+      - "4317:4317" # OTLP gRPC from app
+      - "4318:4318" # OTLP HTTP (optional)
+    depends_on:
+      - tempo
+    networks:
+      - observability
+
 # Persistent volumes for data storage
 volumes:
   grafana-data: # Grafana dashboards, datasources, and settings
   loki-data: # Loki log indexes and chunks
   promtail-positions: # Promtail positions data
+  tempo-data: # Tempo trace data
 
 # Network for observability stack
 networks:

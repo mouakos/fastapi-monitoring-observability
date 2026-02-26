@@ -37,17 +37,20 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         route = request.scope.get("route")
         route_path = route.path if route else request.url.path
 
+        user_agent = request.headers.get("user-agent")
+
         # Bind relevant information to the logger for structured logging
         log = logger.bind(
             http_method=request.method,
             http_path=route_path,
             client_ip=client_host,
+            user_agent=user_agent,
         )
 
         start = time.perf_counter()
         try:
             response = await call_next(request)
-            duration_ms = (time.perf_counter() - start) * 1000.0
+            duration_ms = round((time.perf_counter() - start) * 1000.0, 2)
 
             # Update status_code binding with actual response status
             log = log.bind(http_status_code=response.status_code, duration_ms=duration_ms)
@@ -62,6 +65,6 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             return response
         except Exception:
             # In case of unhandled exceptions, log the error with status code 500
-            duration_ms = (time.perf_counter() - start) * 1000.0
+            duration_ms = round((time.perf_counter() - start) * 1000.0, 2)
             log.bind(http_status_code=500, duration_ms=duration_ms).exception("unhandled_exception")
             return JSONResponse(content={"detail": "Internal Server Error"}, status_code=500)
