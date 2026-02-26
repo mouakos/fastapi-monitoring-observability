@@ -71,7 +71,7 @@ def setup_logging() -> None:
     # File sink (rotation)
     if log_to_file:
         logger.add(
-            "logs/app-{time}.log",
+            "logs/app.log",
             level=log_level,
             rotation="5 MB",
             retention=5,
