@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from loguru import logger
 
 from app.api import router
+from app.error_handlers import register_exception_handlers
 from app.middleware import RequestLoggingMiddleware
 from app.observability.logging import setup_logging
 from app.observability.tracing import setup_otlp_tracing
@@ -60,6 +61,8 @@ setup_otlp_tracing(app)
 # Add custom request logging middleware
 app.add_middleware(RequestLoggingMiddleware)
 
+# Register exception handlers
+register_exception_handlers(app)
 
 # Add API routes
 app.include_router(router)

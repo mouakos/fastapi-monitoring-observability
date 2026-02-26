@@ -55,8 +55,5 @@ def setup_otlp_tracing(app: FastAPI) -> None:
     logger.configure(patcher=inject_trace_context_to_logger)  # type: ignore [arg-type]
 
     FastAPIInstrumentor.instrument_app(
-        app,
-        tracer_provider=provider,
-        excluded_urls=",".join(EXCLUDED_PATHS),
-        exclude_spans=["receive", "send"],
+        app, tracer_provider=provider, excluded_urls=",".join(EXCLUDED_PATHS)
     )

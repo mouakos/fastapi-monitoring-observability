@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import Response
 
 from app.constants import EXCLUDED_PATHS
 
@@ -45,27 +45,15 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         )
 
         start = time.perf_counter()
-        try:
-            response = await call_next(request)
-            duration_ms = round((time.perf_counter() - start) * 1000.0, 2)
+        response = await call_next(request)
+        duration_ms = round((time.perf_counter() - start) * 1000.0, 2)
 
-            # Update status_code binding with actual response status
-            log = log.bind(http_status_code=response.status_code, duration_ms=duration_ms)
+        # Log the request with the response status code and duration
+        log.bind(http_status_code=response.status_code, duration_ms=duration_ms).info(
+            "http_request"
+        )
 
-            # Log at different levels based on status code
-            if response.status_code >= 500:
-                log.error("http_request")
-            elif response.status_code >= 400:
-                log.warning("http_request")
-            else:
-                log.info("http_request")
-
-            return response
-        except Exception:
-            # In case of unhandled exceptions, log the error with status code 500
-            duration_ms = round((time.perf_counter() - start) * 1000.0, 2)
-            log.bind(http_status_code=500, duration_ms=duration_ms).exception("unhandled_exception")
-            return JSONResponse(content={"detail": "Internal Server Error"}, status_code=500)
+        return response
 
     def _get_path_template(self, request: Request) -> str:
         """Get the route path template for the incoming HTTP request.
