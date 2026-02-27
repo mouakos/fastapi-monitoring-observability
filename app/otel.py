@@ -41,15 +41,29 @@ def setup_otlp(app: FastAPI) -> None:
     Args:
         app: The FastAPI application instance to instrument with OpenTelemetry.
     """
+    if config.otel_sdk_disabled:
+        logger.info("OpenTelemetry SDK is disabled. Skipping OTLP setup.")
+        return
+
     resource = Resource.create(
-        {"deployment.environment": config.environment, "service.version": config.api_version}
+        {
+            "deployment.environment": config.environment,
+            "service.version": config.api_version,
+            "service.name": config.otel_service_name,
+        }
     )
     trace_provider = TracerProvider(resource=resource)
-    otlp_span_exporter = OTLPSpanExporter(insecure=True)
+    otlp_span_exporter = OTLPSpanExporter(
+        insecure=config.otel_exporter_otlp_traces_insecure,
+        endpoint=config.otel_exporter_otlp_traces_endpoint,
+    )
     trace_provider.add_span_processor(BatchSpanProcessor(otlp_span_exporter))
     trace.set_tracer_provider(trace_provider)
 
-    otlp_metric_exporter = OTLPMetricExporter(insecure=True)
+    otlp_metric_exporter = OTLPMetricExporter(
+        insecure=config.otel_exporter_otlp_metrics_insecure,
+        endpoint=config.otel_exporter_otlp_metrics_endpoint,
+    )
     reader = PeriodicExportingMetricReader(otlp_metric_exporter)
     meter_provider = MeterProvider(resource=resource, metric_readers=[reader])
     metrics.set_meter_provider(meter_provider)

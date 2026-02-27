@@ -1,6 +1,5 @@
 """Middleware to record custom OpenTelemetry metrics for FastAPI requests."""
 
-import os
 import time
 from collections.abc import Awaitable, Callable
 
@@ -11,6 +10,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp
 
+from app.settings import config
 from app.utils import get_request_info
 
 
@@ -24,8 +24,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         rather than at module level to ensure they use the real exporter.
         """
         super().__init__(app)
-        otel_service_name = os.getenv("OTEL_SERVICE_NAME", "fastapi-app")
-        meter = metrics.get_meter(f"{otel_service_name}.metrics")
+        meter = metrics.get_meter(f"{config.otel_service_name}.metrics")
         self._counter: Counter = meter.create_counter(
             name="http_request_count",
             description="Count of HTTP requests received",

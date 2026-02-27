@@ -3,7 +3,6 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from loguru import logger
 
@@ -14,8 +13,6 @@ from app.middleware.metrics import MetricsMiddleware
 from app.otel import setup_otlp
 from app.routes import router
 from app.settings import config
-
-load_dotenv()
 
 setup_logging()
 
