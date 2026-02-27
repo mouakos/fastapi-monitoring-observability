@@ -8,7 +8,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from app.constants import EXCLUDED_PATHS
+from app.settings import EXCLUDED_PATHS
+from app.utils import get_request_info
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -30,18 +31,14 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         if request.url.path in EXCLUDED_PATHS:
             return await call_next(request)
 
-        # Use Loguru's contextualize to add request_id to the logger context for this request
-
-        client_host = request.client.host if request.client else "unknown"
-        route_path = self._get_path_template(request)
-        user_agent = request.headers.get("user-agent")
+        request_info = get_request_info(request)
 
         # Bind relevant information to the logger for structured logging
         log = logger.bind(
-            http_method=request.method,
-            http_path=route_path,
-            client_ip=client_host,
-            user_agent=user_agent,
+            http_method=request_info.method,
+            http_path=request_info.route_path,
+            client_ip=request_info.client_ip,
+            user_agent=request_info.user_agent,
         )
 
         start = time.perf_counter()
@@ -54,15 +51,3 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         )
 
         return response
-
-    def _get_path_template(self, request: Request) -> str:
-        """Get the route path template for the incoming HTTP request.
-
-        Args:
-            request (Request): The incoming HTTP request object.
-
-        Returns:
-            str: The route path template for the incoming HTTP request.
-        """
-        route = request.scope.get("route")
-        return route.path if route else request.url.path

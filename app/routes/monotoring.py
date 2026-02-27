@@ -1,11 +1,10 @@
-"""This module contains the API routes for the FastAPI application."""
+"""Monitoring and observability endpoints."""
 
 import random
 from asyncio import sleep
 
 from fastapi import APIRouter, HTTPException
 from loguru import logger
-from pydantic import BaseModel
 
 from app.settings import config
 
@@ -24,11 +23,6 @@ def read_root() -> dict[str, str]:
     return {
         "message": "Welcome to the FastAPI application! Please visit /docs for API documentation."
     }
-
-
-# ======================
-# Monitoring & Observability Endpoints
-# ======================
 
 
 @router.get(
@@ -104,104 +98,3 @@ def load_test_endpoint(count: int = 1) -> dict[str, int]:
     """Simple endpoint for load testing."""
     result = sum(range(count))
     return {"count": count, "result": result}
-
-
-# ======================
-# Error Simulation Endpoints
-# ======================
-
-
-@router.get(
-    "/error/400",
-    summary="Bad Request Error",
-    description="Triggers a 400 Bad Request error for testing error handling.",
-    tags=["Errors"],
-)
-def bad_request() -> None:
-    """Simulates a bad request error."""
-    raise HTTPException(status_code=400, detail="Bad request example")
-
-
-@router.get(
-    "/error/401",
-    summary="Unauthorized Error",
-    description="Triggers a 401 Unauthorized error for testing authentication failures.",
-    tags=["Errors"],
-)
-def unauthorized() -> None:
-    """Simulates an unauthorized access error."""
-    raise HTTPException(status_code=401, detail="Unauthorized example")
-
-
-@router.get(
-    "/error/404",
-    summary="Not Found Error",
-    description="Triggers a 404 Not Found error for testing missing resource handling.",
-    tags=["Errors"],
-)
-def not_found() -> None:
-    """Simulates a resource not found error."""
-    raise HTTPException(status_code=404, detail="Resource not found")
-
-
-class Item(BaseModel):
-    """Model for item validation testing."""
-
-    name: str
-    price: float
-
-
-@router.post(
-    "/error/validation",
-    summary="Validation Error",
-    description="Triggers a 422 Unprocessable Entity error by sending invalid data.",
-    tags=["Errors"],
-)
-def validation_error(item: Item) -> Item:
-    """Endpoint to test request validation errors."""
-    return item
-
-
-@router.get(
-    "/error/500-controlled",
-    summary="Controlled Server Error",
-    description="Triggers a controlled 500 Internal Server Error for testing error responses.",
-    tags=["Errors"],
-)
-def controlled_500() -> None:
-    """Simulates a controlled server error."""
-    raise HTTPException(status_code=500, detail="Controlled server error")
-
-
-@router.get(
-    "/error/500-crash",
-    summary="Unhandled Exception",
-    description="Triggers an unhandled division by zero error to simulate application crashes.",
-    tags=["Errors"],
-)
-def crash() -> float:
-    """Simulates an unhandled exception causing a crash."""
-    return 1 / 0
-
-
-@router.get(
-    "/error/timeout",
-    summary="Timeout Simulation",
-    description="Simulates a slow endpoint that takes 10 seconds to respond.",
-    tags=["Errors"],
-)
-async def timeout() -> dict[str, str]:
-    """Simulates a slow request that might timeout."""
-    await sleep(10)
-    return {"message": "Finished after delay"}
-
-
-@router.get(
-    "/error/external",
-    summary="External Service Failure",
-    description="Simulates an external service failure with a RuntimeError.",
-    tags=["Errors"],
-)
-def external_failure() -> None:
-    """Simulates an external service dependency failure."""
-    raise RuntimeError("External service failed")

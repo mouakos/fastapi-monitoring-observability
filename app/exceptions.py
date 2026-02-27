@@ -6,6 +6,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from loguru import logger
 
+from app.utils import get_request_info
+
 
 def register_exception_handlers(app: FastAPI) -> None:
     """Register global exception handlers for the FastAPI application.
@@ -25,13 +27,12 @@ def register_exception_handlers(app: FastAPI) -> None:
         Returns:
             JSONResponse: A standardized JSON response with status code 500 and error details.
         """
-        route = request.scope.get("route")
-        http_path = route.path if route else request.url.path
+        request_info = get_request_info(request)
         logger.bind(
-            http_method=request.method,
-            http_path=http_path,
-            client_ip=request.client.host if request.client else "unknown",
-            user_agent=request.headers.get("user-agent"),
+            http_method=request_info.method,
+            http_path=request_info.route_path,
+            client_ip=request_info.client_ip,
+            user_agent=request_info.user_agent,
             http_status_code=http.HTTPStatus.INTERNAL_SERVER_ERROR,
         ).exception("unhandled_exception")
 

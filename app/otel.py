@@ -14,8 +14,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-from app.constants import EXCLUDED_PATHS
-from app.settings import config
+from app.settings import EXCLUDED_PATHS, config
 
 
 def inject_trace_context_to_logger(record: dict[str, Any]) -> None:
@@ -37,10 +36,10 @@ def inject_trace_context_to_logger(record: dict[str, Any]) -> None:
 
 
 def setup_otlp(app: FastAPI) -> None:
-    """Set up OpenTelemetry tracing for the FastAPI application using gRPC OTLP exporter.
+    """Set up OpenTelemetry tracing and metrics for the FastAPI application.
 
     Args:
-        app: The FastAPI application instance to instrument with OpenTelemetry tracing.
+        app: The FastAPI application instance to instrument with OpenTelemetry.
     """
     resource = Resource.create(
         {"deployment.environment": config.environment, "service.version": config.api_version}
