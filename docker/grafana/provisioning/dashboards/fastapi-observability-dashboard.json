@@ -136,7 +136,7 @@
             "title": "Total 4xx Errors",
             "datasource": {
                 "type": "prometheus",
-                "name": "Prometheus"
+                "uid": "prometheus"
             },
             "targets": [
                 {
@@ -191,7 +191,7 @@
             "title": "In-Progress Requests",
             "datasource": {
                 "type": "prometheus",
-                "name": "Prometheus"
+                "uid": "prometheus"
             },
             "targets": [
                 {
@@ -246,7 +246,7 @@
             "title": "Request Rate by Path (req/s)",
             "datasource": {
                 "type": "prometheus",
-                "name": "Prometheus"
+                "uid": "prometheus"
             },
             "targets": [
                 {
@@ -292,7 +292,7 @@
             "title": "Average Request Duration (ms)",
             "datasource": {
                 "type": "prometheus",
-                "name": "Prometheus"
+                "uid": "prometheus"
             },
             "targets": [
                 {
@@ -338,7 +338,7 @@
             "title": "Request Duration Percentiles (p50, p95, p99)",
             "datasource": {
                 "type": "prometheus",
-                "name": "Prometheus"
+                "uid": "prometheus"
             },
             "targets": [
                 {
@@ -394,7 +394,7 @@
             "title": "FastAPI Logs",
             "datasource": {
                 "type": "loki",
-                "name": "Loki"
+                "uid": "loki"
             },
             "targets": [
                 {

@@ -23,6 +23,7 @@ metrics_generator:
     service_graphs: {} # Generate service dependency graphs
     span_metrics: {} # Generate span-level metrics (duration histograms)
 
+# Storage - where Tempo stores trace data
 storage:
   trace:
     backend: local

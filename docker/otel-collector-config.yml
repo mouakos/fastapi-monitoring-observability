@@ -1,31 +1,36 @@
+# Receivers define how the collector receives telemetry data (traces and metrics) from the application
 receivers:
   otlp:
     protocols:
       grpc:
-        endpoint: 0.0.0.0:4317
+        endpoint: 0.0.0.0:4317 # OTLP gRPC for receiving traces and metrics from the app
       http:
-        endpoint: 0.0.0.0:4318
+        endpoint: 0.0.0.0:4318 # OTLP HTTP (optional, can be used by some libraries that only support HTTP)
 
+# Processors can be used to batch, filter, or transform telemetry data before exporting
 processors:
   batch:
 
+# Exporters send the processed telemetry data to external systems like Tempo and Prometheus
 exporters:
   otlp:
-    endpoint: tempo:4317
+    endpoint: tempo:4317 # Export traces to Tempo using OTLP gRPC
     tls:
       insecure: true
-    
+
   prometheus:
     endpoint: "0.0.0.0:9464" # Port for Prometheus scraping
     namespace: "otel" # Optional: Prefix for metric names
+    enable_open_metrics: true # Expose metrics in OpenMetrics format (required for exemplars)
 
+# Service defines the pipelines that connect receivers, processors, and exporters
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
       exporters: [otlp]
-  
+
     metrics:
       receivers: [otlp]
       processors: [batch]

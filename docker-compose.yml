@@ -87,13 +87,14 @@ services:
       - prometheus_data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--enable-feature=exemplar-storage" # Enable exemplar storage for better trace-metric correlation
     networks:
       - observability
 
   # OpenTelemetry Collector: Unified telemetry data collection and export (Traces + Metrics)
   # Receives traces and metrics from the app, processes them, and exports to Tempo and Prometheus
   otel-collector:
-    image: otel/opentelemetry-collector:0.146.1
+    image: otel/opentelemetry-collector-contrib:0.146.1
     container_name: otel-collector
     command: ["--config=/etc/otelcol/config.yml"]
     volumes:

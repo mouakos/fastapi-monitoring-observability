@@ -1,35 +1,50 @@
 apiVersion: 1
 
 datasources:
+  # Prometheus datasource for metrics
   - name: Prometheus
     type: prometheus
+    uid: prometheus
     access: proxy
     url: http://prometheus:9090
     isDefault: True
+    jsonData:
+      # Enable exemplars for better trace-metric correlation in Grafana Explore
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo
 
+  # Loki datasource for logs
   - name: Loki
     type: loki
+    uid: loki
     access: proxy
     url: http://loki:3100
     isDefault: false
     jsonData:
+      # Derived fields allow us to extract trace IDs from log labels and link to Tempo traces
       derivedFields:
         - name: TraceID
-          datasourceUid: Tempo
+          datasourceUid: tempo
           matcherType: label
           matcherRegex: trace_id
-          url: "${__value.raw}"
+          url: "$${__value.raw}"
           internalLink: true
 
+  # Tempo datasource for distributed tracing
   - name: Tempo
     type: tempo
+    uid: tempo
     access: proxy
     url: http://tempo:3200
     jsonData:
+      # Enable node graph visualization in Grafana Explore for Tempo traces
       nodeGraph:
         enabled: true
+
+      # Enable traces-to-logs linking in Grafana Explore
       tracesToLogsV2:
         customQuery: false
-        datasourceUid: Loki
+        datasourceUid: loki
         filterBySpanID: false
         filterByTraceID: true
