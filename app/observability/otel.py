@@ -51,7 +51,7 @@ def setup_otlp(app: FastAPI) -> None:
     trace.set_tracer_provider(trace_provider)
 
     otlp_metric_exporter = OTLPMetricExporter(insecure=True)
-    reader = PeriodicExportingMetricReader(otlp_metric_exporter, export_interval_millis=5000)
+    reader = PeriodicExportingMetricReader(otlp_metric_exporter)
     meter_provider = MeterProvider(resource=resource, metric_readers=[reader])
     metrics.set_meter_provider(meter_provider)
 

@@ -29,22 +29,27 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         Returns:
             Response: The HTTP response from the next handler.
         """
+        attrs = {
+            "http.method": request.method,
+            "http.path": request.url.path,
+        }
         # Increment in-progress counter
-        HTTP_REQUEST_IN_PROGRESS.add(1)
+        HTTP_REQUEST_IN_PROGRESS.add(1, attributes=attrs)
         start_time = time.perf_counter()
+        status_code = 500
         try:
-            return await call_next(request)
+            response = await call_next(request)
+            status_code = response.status_code
+            return response
+        except Exception:
+            raise
         finally:
             duration_ms = (time.perf_counter() - start_time) * 1000.0
 
-            attrs = {
-                "http.method": request.method,
-                "http.path": request.url.path,
-                "http.status_code": getattr(request.state, "response_status_code", 500),
-            }
-
-            # Decrement in-progress counter
+            # Decrement in-progress counter (same label set as the increment)
             HTTP_REQUEST_IN_PROGRESS.add(-1, attributes=attrs)
+
+            attrs.update({"http.status_code": str(status_code)})
             # Record request count and duration
             HTTP_REQUEST_DURATION_MS.record(duration_ms, attributes=attrs)
             # Increment request count

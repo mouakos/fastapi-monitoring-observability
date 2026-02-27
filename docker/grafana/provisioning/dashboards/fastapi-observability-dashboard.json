@@ -1,0 +1,424 @@
+{
+    "id": null,
+    "uid": "fastapi-obs",
+    "title": "FastAPI Observability",
+    "tags": [
+        "fastapi",
+        "observability"
+    ],
+    "timezone": "browser",
+    "schemaVersion": 39,
+    "version": 1,
+    "refresh": "10s",
+    "editable": true,
+    "time": {
+        "from": "now-1h",
+        "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+        "list": []
+    },
+    "annotations": {
+        "list": []
+    },
+    "links": [],
+    "panels": [
+        {
+            "id": 1,
+            "type": "stat",
+            "title": "Total Requests",
+            "datasource": {
+                "type": "prometheus",
+                "name": "Prometheus"
+            },
+            "targets": [
+                {
+                    "expr": "sum(otel_http_request_count_total)",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 7,
+                "w": 6,
+                "x": 0,
+                "y": 0
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "textMode": "auto"
+            },
+            "pluginVersion": "12.3.3"
+        },
+        {
+            "id": 2,
+            "type": "stat",
+            "title": "Total 5xx Errors",
+            "datasource": {
+                "type": "prometheus",
+                "name": "Prometheus"
+            },
+            "targets": [
+                {
+                    "expr": "sum(otel_http_request_count_total{http_status_code=~\"5..\"})",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 1
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 7,
+                "w": 6,
+                "x": 6,
+                "y": 0
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "textMode": "auto"
+            },
+            "pluginVersion": "12.3.3"
+        },
+        {
+            "id": 3,
+            "type": "stat",
+            "title": "Total 4xx Errors",
+            "datasource": {
+                "type": "prometheus",
+                "name": "Prometheus"
+            },
+            "targets": [
+                {
+                    "expr": "sum(otel_http_request_count_total{http_status_code=~\"4..\"})",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short",
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "orange",
+                                "value": 1
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 7,
+                "w": 6,
+                "x": 12,
+                "y": 0
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "textMode": "auto"
+            },
+            "pluginVersion": "12.3.3"
+        },
+        {
+            "id": 4,
+            "type": "stat",
+            "title": "In-Progress Requests",
+            "datasource": {
+                "type": "prometheus",
+                "name": "Prometheus"
+            },
+            "targets": [
+                {
+                    "expr": "sum(otel_http_request_in_progress)",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "none",
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "orange",
+                                "value": 10
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 7,
+                "w": 6,
+                "x": 18,
+                "y": 0
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "textMode": "auto"
+            },
+            "pluginVersion": "12.3.3"
+        },
+        {
+            "id": 5,
+            "type": "timeseries",
+            "title": "Request Rate by Path (req/s)",
+            "datasource": {
+                "type": "prometheus",
+                "name": "Prometheus"
+            },
+            "targets": [
+                {
+                    "expr": "sum by(http_path) (rate(otel_http_request_count_total[1m]))",
+                    "legendFormat": "{{http_path}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "reqps",
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never"
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 7
+            },
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "multi",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.3.3"
+        },
+        {
+            "id": 6,
+            "type": "timeseries",
+            "title": "Average Request Duration (ms)",
+            "datasource": {
+                "type": "prometheus",
+                "name": "Prometheus"
+            },
+            "targets": [
+                {
+                    "expr": "sum by(http_path) (rate(otel_http_request_duration_ms_sum[1m])) / sum by(http_path) (rate(otel_http_request_duration_ms_count[1m]))",
+                    "legendFormat": "{{http_path}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "ms",
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never"
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 7
+            },
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "multi",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.3.3"
+        },
+        {
+            "id": 7,
+            "type": "timeseries",
+            "title": "Request Duration Percentiles (p50, p95, p99)",
+            "datasource": {
+                "type": "prometheus",
+                "name": "Prometheus"
+            },
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.50, sum by(le, http_path) (rate(otel_http_request_duration_ms_bucket[1m])))",
+                    "legendFormat": "p50 - {{http_path}}",
+                    "refId": "A"
+                },
+                {
+                    "expr": "histogram_quantile(0.95, sum by(le, http_path) (rate(otel_http_request_duration_ms_bucket[1m])))",
+                    "legendFormat": "p95 - {{http_path}}",
+                    "refId": "B"
+                },
+                {
+                    "expr": "histogram_quantile(0.99, sum by(le, http_path) (rate(otel_http_request_duration_ms_bucket[1m])))",
+                    "legendFormat": "p99 - {{http_path}}",
+                    "refId": "C"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "ms",
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never"
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 24,
+                "x": 0,
+                "y": 15
+            },
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "multi",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.3.3"
+        },
+        {
+            "id": 8,
+            "type": "logs",
+            "title": "FastAPI Logs",
+            "datasource": {
+                "type": "loki",
+                "name": "Loki"
+            },
+            "targets": [
+                {
+                    "expr": "{service_name=\"fastapi-app\"}",
+                    "refId": "A"
+                }
+            ],
+            "gridPos": {
+                "h": 12,
+                "w": 24,
+                "x": 0,
+                "y": 23
+            },
+            "options": {
+                "dedupStrategy": "none",
+                "enableLogDetails": true,
+                "prettifyLogMessage": false,
+                "showCommonLabels": false,
+                "showLabels": false,
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": false
+            },
+            "pluginVersion": "12.3.3"
+        }
+    ]
+}
