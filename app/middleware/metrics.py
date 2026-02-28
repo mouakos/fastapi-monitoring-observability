@@ -10,7 +10,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp
 
-from app.settings import config
+from app.settings import EXCLUDED_PATHS, config
 from app.utils import get_request_info
 
 
@@ -51,6 +51,9 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             Response: The HTTP response from the next handler.
         """
         request_info = get_request_info(request)
+        # Skip metrics for excluded paths
+        if request_info.path in EXCLUDED_PATHS:
+            return await call_next(request)
         in_progress_attrs = {
             "http.method": request_info.method,
             "http.path": request_info.route_path,

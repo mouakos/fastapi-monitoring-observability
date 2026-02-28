@@ -42,7 +42,7 @@ def setup_otlp(app: FastAPI) -> None:
         app: The FastAPI application instance to instrument with OpenTelemetry.
     """
     if config.otel_sdk_disabled:
-        logger.info("OpenTelemetry SDK is disabled. Skipping OTLP setup.")
+        logger.info("opentelemetry_sdk_disabled")
         return
 
     resource = Resource.create(
