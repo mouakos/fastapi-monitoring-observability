@@ -50,7 +50,8 @@ def app_info() -> dict[str, str]:
         "version": config.api_version,
         "environment": config.environment,
         "log_level": config.log_level,
-        "log_format": config.log_format,
+        "log_format": "json" if config.log_serialized else "text",
+        "otel_enabled": str(config.otel_enabled),
     }
 
 

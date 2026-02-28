@@ -12,6 +12,15 @@ from loguru import logger
 
 from app.settings import config
 
+# Format for logs using UTC timestamps
+LOG_FORMAT = (
+    "<green>{time:YYYY-MM-DD HH:mm:ss!UTC}</green> | "
+    "<level>{level: <8}</level> | "
+    "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
+    "<level>{message}</level> - "
+    "<yellow>{extra}</yellow>"
+)
+
 
 class InterceptHandler(logging.Handler):
     """Redirect standard logging records to Loguru."""
@@ -41,21 +50,11 @@ def setup_logging() -> None:
     """Setup logging configuration using Loguru."""
     log_level = config.log_level.upper()
     log_to_file = config.log_to_file
-    serialize = config.log_format.lower() == "json"
 
     # Remove default Loguru handler
     logger.remove()
 
     logger.configure(extra={"version": config.api_version, "environment": config.environment})
-
-    # Format for logs using UTC timestamps
-    format = (
-        "<green>{time:YYYY-MM-DD HH:mm:ss!UTC}</green> | "
-        "<level>{level: <8}</level> | "
-        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
-        "<level>{message}</level> - "
-        "<yellow>{extra}</yellow>"
-    )
 
     # Console sink
     logger.add(
@@ -64,8 +63,8 @@ def setup_logging() -> None:
         enqueue=True,
         backtrace=False,
         diagnose=False,
-        format=format,
-        serialize=serialize,
+        format=LOG_FORMAT,
+        serialize=config.log_serialized,
     )
 
     # File sink (rotation)
@@ -79,15 +78,15 @@ def setup_logging() -> None:
             enqueue=True,
             backtrace=False,
             diagnose=False,
-            format=format,
-            serialize=serialize,
+            format=LOG_FORMAT,
+            serialize=config.log_serialized,
         )
 
     # Intercept standard logging (uvicorn, libs, etc.)
     logging.root.handlers = [InterceptHandler()]
     logging.root.setLevel(log_level)
 
-    # Disable default loggers from uvicorn and FastAPI to avoid duplicate logs
+    # optional: disable noisy loggers (e.g., uvicorn access logs)
     for name in ("uvicorn", "uvicorn.error", "uvicorn.access", "fastapi"):
         logging.getLogger(name).handlers = []
         logging.getLogger(name).propagate = False

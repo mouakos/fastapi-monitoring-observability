@@ -10,10 +10,10 @@ services:
       LOG_LEVEL: INFO
       LOG_TO_FILE: false
       OTEL_SERVICE_NAME: fastapi-app
-      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "otel-collector:4317"
-      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "otel-collector:4317"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "otel-collector:4317"
+      OTEL_EXPORTER_OTLP_INSECURE: "true"
       OTEL_METRIC_EXPORT_INTERVAL: 5000
-      OTEL_SDK_DISABLED: false
+      OTEL_ENABLED: true
     ports:
       - "8000:8000"
     depends_on:
