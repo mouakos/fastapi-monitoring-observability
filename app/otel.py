@@ -5,9 +5,9 @@ Configures the three pillars of observability over gRPC OTLP exporters:
 - Metrics : PeriodicExportingMetricReader → OTLPMetricExporter → collector
 - Logs    : Loguru → LoggingHandler → BatchLogRecordProcessor → OTLPLogExporter → collector
 
-All signals share a common Resource that identifies the service. FastAPI is
-automatically instrumented via FastAPIInstrumentor to capture HTTP spans and
-metrics without manual code changes.
+All signals share a common Resource that identifies the service. FastAPI HTTP
+spans are captured via FastAPIInstrumentor; outbound HTTPX calls are captured
+via HTTPXClientInstrumentor (injects traceparent into outgoing request headers).
 """
 
 from typing import Any
@@ -20,6 +20,7 @@ from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.metrics import MeterProvider
@@ -170,8 +171,9 @@ def setup_otlp(app: FastAPI) -> None:
     Steps performed when enabled:
     1. Build a shared Resource with service metadata.
     2. Configure OTLP exporters for traces, metrics, and logs.
-    3. Instrument FastAPI automatically (HTTP spans + metrics) via FastAPIInstrumentor.
-    4. Register a Loguru patcher to stamp trace_id/span_id on every log record.
+    3. Instrument FastAPI to capture incoming HTTP spans and metrics.
+    4. Instrument HTTPX to capture outbound HTTP spans and inject traceparent headers.
+    5. Register a Loguru patcher to stamp trace_id/span_id on every log record.
 
     Args:
         app: The FastAPI application instance to instrument.
@@ -185,12 +187,14 @@ def setup_otlp(app: FastAPI) -> None:
     meter_provider = _setup_metrics(resource)
     _setup_logs(resource)
 
+    # Incoming HTTP requests
     FastAPIInstrumentor.instrument_app(
         app,
         tracer_provider=trace_provider,
         meter_provider=meter_provider,
-        http_capture_headers_server_response=["x-request-id"],
     )
+    # Outbound HTTP calls — injects traceparent into request headers
+    HTTPXClientInstrumentor().instrument()
 
     # Register the trace context patcher once at startup
     register_log_patcher(_inject_trace_context_to_logger)

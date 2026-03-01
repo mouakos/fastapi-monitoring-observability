@@ -6,13 +6,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from loguru import logger
 
+from app.api import router
 from app.correlation_id import setup_correlation_id
 from app.exceptions import register_exception_handlers
 from app.logging import setup_logging
 from app.middleware.logging import RequestLoggingMiddleware
 from app.middleware.metrics import MetricsMiddleware
 from app.otel import setup_otlp
-from app.routes import router
 from app.settings import config
 
 # ---------------------------------------------------------------------------
@@ -33,9 +33,11 @@ setup_logging(silenced_loggers=_SILENCED_LOGGERS)
 async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
     """Lifespan function to perform startup and shutdown tasks."""
     logger.info("Application is starting up...")
+    # Perform any additional startup tasks here (e.g. warmup, preloading) if needed
     logger.info("Application startup completed.")
     yield
     logger.info("Application is shutting down...")
+    # Perform any additional shutdown tasks here if needed (e.g. cleanup, flushing) before the app fully stops
     logger.info("Application shutting down completed.")
 
 

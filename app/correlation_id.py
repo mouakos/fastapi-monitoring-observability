@@ -28,7 +28,9 @@ def _inject_correlation_id(record: dict[str, Any]) -> None:
     Args:
         record: The Loguru log record to modify.
     """
-    record["extra"]["request_id"] = correlation_id.get() or ""
+    request_id = correlation_id.get()
+    if request_id:
+        record["extra"]["request_id"] = request_id
 
 
 # ---------------------------------------------------------------------------
