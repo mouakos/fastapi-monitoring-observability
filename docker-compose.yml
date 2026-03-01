@@ -100,9 +100,8 @@ services:
     volumes:
       - ./docker/otel-collector-config.yml:/etc/otelcol/config.yml:ro
     ports:
-      - "4317:4317" # OTLP gRPC from app
-      - "4318:4318" # OTLP HTTP (optional)
-      - "9464:9464" # Prometheus scraping
+      - "4317:4317" # OTLP gRPC 
+      - "4318:4318" # OTLP HTTP
     depends_on:
       - tempo
       - prometheus
