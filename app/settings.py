@@ -32,7 +32,8 @@ class AppConfig(BaseSettings):
 
 config = AppConfig()
 
-# Paths to exclude from logging and tracing to reduce noise in logs and traces
+# Paths excluded from request metrics recording, and tracing to reduce noise.
+# Typically infrastructure/meta endpoints that produce high-volume, low-value telemetry.
 EXCLUDED_PATHS: frozenset[str] = frozenset(
     {
         "/openapi.json",

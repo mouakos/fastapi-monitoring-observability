@@ -8,7 +8,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from app.settings import EXCLUDED_PATHS
 from app.utils import get_request_info
 
 
@@ -27,10 +26,6 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         Returns:
             Response: The HTTP response from the next handler.
         """
-        # Skip logging for excluded paths
-        if request.url.path in EXCLUDED_PATHS:
-            return await call_next(request)
-
         request_info = get_request_info(request)
 
         # Bind relevant information to the logger for structured logging
