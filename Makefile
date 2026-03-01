@@ -37,7 +37,7 @@ format:
 	uv run ruff format
 
 mypy:
-	uv run mypy app
+	uv run mypy
 
 pre-commit:
 	uv run pre-commit run --all-files
@@ -59,5 +59,7 @@ docker-restart:
 	docker compose restart
 
 clean:
-	find . -type d -name "__pycache__" -exec rm -rf {} +
-	rm -rf .pytest_cache
+	pwsh -Command "Get-ChildItem -Recurse -Filter '__pycache__' -Directory | Remove-Item -Recurse -Force"
+	pwsh -Command "if (Test-Path .pytest_cache) { Remove-Item -Recurse -Force .pytest_cache }"
+	pwsh -Command "if (Test-Path .mypy_cache) { Remove-Item -Recurse -Force .mypy_cache }"
+	pwsh -Command "if (Test-Path .ruff_cache) { Remove-Item -Recurse -Force .ruff_cache }"

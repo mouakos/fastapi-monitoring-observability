@@ -1,4 +1,4 @@
-"""Middleware for the FastAPI application."""
+"""Middleware for logging HTTP requests."""
 
 import time
 from collections.abc import Awaitable, Callable
@@ -12,12 +12,12 @@ from app.utils import get_request_info
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    """Middleware to log incoming HTTP requests with method, path, status code, and duration."""
+    """Middleware to log incoming HTTP requests."""
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
-        """Middleware to log incoming HTTP requests with method, path, status code, and duration.
+        """Middleware to log incoming HTTP requests.
 
         Args:
             request(Request): The incoming HTTP request.
