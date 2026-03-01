@@ -1,12 +1,10 @@
 """Loguru-based logging configuration for the FastAPI application.
 
 Responsibilities of this module:
-- Define the shared log format (LOG_FORMAT) used by all sinks.
-- Expose a patcher registry so other modules (otel.py, correlation_id.py, etc.)
-  can inject per-request context (trace_id, request_id, …) into every log record
+- Define the shared log format used by all sinks.
+- Expose a patcher registry so other modules can inject context into every log record
   without coupling those modules to each other.
-- Bridge the standard-library logging (used by uvicorn, third-party libs) into
-  Loguru via InterceptHandler so all logs are captured in a single pipeline.
+- Bridge the standard-library logging into Loguru so all logs are captured in a single pipeline.
 - Configure sinks (stdout, optional rotating file) and silence noisy loggers.
 """
 
@@ -33,7 +31,6 @@ LOG_FORMAT = (
 )
 
 # Loggers to silence (they are noisy and handled by our own middleware)
-_SILENCED_LOGGERS = ("uvicorn", "uvicorn.error", "uvicorn.access", "fastapi")
 
 # ---------------------------------------------------------------------------
 # Patcher registry — lets multiple modules register log record patchers
@@ -46,7 +43,7 @@ def register_log_patcher(fn: Callable[[dict[str, Any]], None]) -> None:
     """Add a patcher function to the global Loguru patcher registry.
 
     Patchers are called on every log record before it is forwarded to any sink.
-    Use this to inject per-request context (e.g. request_id, trace_id) into
+    Use this to inject context (e.g. request_id, trace_id) into
     record["extra"] from a ContextVar or any other source.
 
     Patchers are applied in registration order. Registering the same function
@@ -60,9 +57,6 @@ def register_log_patcher(fn: Callable[[dict[str, Any]], None]) -> None:
 
 def _dispatch_patchers(record: dict[str, Any]) -> None:
     """Run all registered patchers on a single Loguru log record.
-
-    Passed directly to logger.configure(patcher=...) so Loguru calls it once
-    per record. Iterates the registry in insertion order.
 
     Args:
         record: The Loguru log record to mutate.
@@ -86,10 +80,6 @@ class InterceptHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         """Forward a stdlib LogRecord to the equivalent Loguru level.
-
-        Resolves the correct Loguru level name from the stdlib level, then walks
-        up the call stack to find the true call site (skipping logging internals)
-        so the logged location points at the original caller, not this handler.
 
         Args:
             record: The stdlib log record to forward.
@@ -115,10 +105,6 @@ class InterceptHandler(logging.Handler):
 
 def _setup_sinks(log_level: str) -> None:
     """Attach output sinks to Loguru.
-
-    Always adds a stdout (console) sink. Adds a rotating file sink at
-    logs/app.log when config.log_to_file is True (5 MB rotation, 5 retained
-    files, gzip compression).
 
     Args:
         log_level: Minimum log level string (e.g. "INFO", "DEBUG").
@@ -148,13 +134,24 @@ def _setup_sinks(log_level: str) -> None:
         )
 
 
+def _disable_loggers(names: list[str]) -> None:
+    """Fully disable a list of stdlib loggers.
+
+    Args:
+        names: Logger names to disable.
+    """
+    for name in names:
+        log = logging.getLogger(name)
+        log.handlers = []
+        log.propagate = False
+        log.disabled = True
+
+
 def _intercept_standard_logging(log_level: str) -> None:
-    """Route stdlib logging into Loguru and disable noisy third-party loggers.
+    """Route stdlib logging into Loguru.
 
     Replaces all root logger handlers with a single InterceptHandler so every
-    stdlib log record is forwarded to Loguru. Loggers in _SILENCED_LOGGERS
-    (uvicorn, fastapi) are disabled because their access/error logs are already
-    captured at a higher level by our own middleware.
+    stdlib log record is forwarded to Loguru.
 
     Args:
         log_level: Minimum log level string applied to the root logger.
@@ -162,18 +159,13 @@ def _intercept_standard_logging(log_level: str) -> None:
     logging.root.handlers = [InterceptHandler()]
     logging.root.setLevel(log_level)
 
-    for name in _SILENCED_LOGGERS:
-        logging.getLogger(name).handlers = []
-        logging.getLogger(name).propagate = False
-        logging.getLogger(name).disabled = True
-
 
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
 
 
-def setup_logging() -> None:
+def setup_logging(silenced_loggers: list[str] | None = None) -> None:
     """Initialise the Loguru logging pipeline.
 
     Must be called once at application startup, before any other module logs.
@@ -181,8 +173,12 @@ def setup_logging() -> None:
     1. Remove Loguru's default stderr handler.
     2. Configure the global patcher dispatcher and default extra fields
        (version, environment) shared across all log records.
-    3. Add output sinks (stdout + optional file).
-    4. Bridge stdlib logging into Loguru and silence noisy loggers.
+    3. Add output sinks (stdout + optional rotating file).
+    4. Bridge stdlib logging into Loguru.
+    5. Disable any loggers passed via silenced_loggers.
+
+    Args:
+        silenced_loggers: Optional list of stdlib logger names to disable entirely. Defaults to None (no loggers silenced).
     """
     log_level = config.log_level.upper()
 
@@ -194,3 +190,5 @@ def setup_logging() -> None:
 
     _setup_sinks(log_level)
     _intercept_standard_logging(log_level)
+    if silenced_loggers:
+        _disable_loggers(silenced_loggers)

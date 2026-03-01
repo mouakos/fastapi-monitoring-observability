@@ -19,7 +19,10 @@ from app.settings import config
 # Logging — must be initialized before anything else
 # ---------------------------------------------------------------------------
 
-setup_logging()
+# Loggers to silence — noisy infrastructure loggers handled by our own middleware
+_SILENCED_LOGGERS = ["uvicorn", "uvicorn.error", "uvicorn.access", "fastapi"]
+
+setup_logging(silenced_loggers=_SILENCED_LOGGERS)
 
 # ---------------------------------------------------------------------------
 # Application instance
