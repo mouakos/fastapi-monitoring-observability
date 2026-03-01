@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from loguru import logger
 
+from app.correlation_id import setup_correlation_id
 from app.exceptions import register_exception_handlers
 from app.logging import setup_logging
 from app.middleware.logging import RequestLoggingMiddleware
@@ -14,18 +15,24 @@ from app.otel import setup_otlp
 from app.routes import router
 from app.settings import config
 
+# ---------------------------------------------------------------------------
+# Logging — must be initialized before anything else
+# ---------------------------------------------------------------------------
+
 setup_logging()
+
+# ---------------------------------------------------------------------------
+# Application instance
+# ---------------------------------------------------------------------------
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
     """Lifespan function to perform startup and shutdown tasks."""
     logger.info("Application is starting up...")
-    # Perform any startup tasks here (e.g., connect to database, initialize resources)
     logger.info("Application startup completed.")
     yield
     logger.info("Application is shutting down...")
-    # Perform any shutdown tasks here (e.g., close database connections, clean up resources)
     logger.info("Application shutting down completed.")
 
 
@@ -53,17 +60,25 @@ app = FastAPI(
         "onComplete": "Ok",
     },
 )
-# Set up OpenTelemetry tracing and metrics
+
+# ---------------------------------------------------------------------------
+# Observability — OpenTelemetry tracing, metrics, and logs
+# ---------------------------------------------------------------------------
+
 setup_otlp(app)
 
-# Add custom request logging middleware
-app.add_middleware(RequestLoggingMiddleware)
+# ---------------------------------------------------------------------------
+# Middleware — registered in LIFO order, so last added runs first
+#   execution order: CorrelationId → RequestLogging → Metrics → app
+# ---------------------------------------------------------------------------
 
-# Add custom metrics middleware to track request metrics
 app.add_middleware(MetricsMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
+setup_correlation_id(app)  # adds CorrelationIdMiddleware (outermost)
 
-# Register exception handlers
+# ---------------------------------------------------------------------------
+# Exception handlers & routes
+# ---------------------------------------------------------------------------
+
 register_exception_handlers(app)
-
-# Add API routes
 app.include_router(router)

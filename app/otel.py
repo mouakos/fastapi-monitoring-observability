@@ -1,4 +1,14 @@
-"""OTLP setup for FastAPI application."""
+"""OpenTelemetry (OTLP) setup for the FastAPI application.
+
+Configures the three pillars of observability over gRPC OTLP exporters:
+- Traces  : BatchSpanProcessor → OTLPSpanExporter → collector
+- Metrics : PeriodicExportingMetricReader → OTLPMetricExporter → collector
+- Logs    : Loguru → LoggingHandler → BatchLogRecordProcessor → OTLPLogExporter → collector
+
+All signals share a common Resource that identifies the service. FastAPI is
+automatically instrumented via FastAPIInstrumentor to capture HTTP spans and
+metrics without manual code changes.
+"""
 
 from typing import Any
 
@@ -18,64 +28,73 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-from app.logging import LOG_FORMAT
+from app.logging import LOG_FORMAT, register_log_patcher
 from app.settings import EXCLUDED_PATHS, config
 
+# ---------------------------------------------------------------------------
+# Log patcher — injects trace context into every Loguru record
+# ---------------------------------------------------------------------------
 
-def inject_trace_context_to_logger(record: dict[str, Any]) -> None:
-    """Inject trace_id and span_id into Loguru logger context.
 
-    This function is used as a Loguru logger patcher to include OpenTelemetry trace context in all log records.
-    It retrieves the current span and, if it is recording, adds the trace_id and span_id to the log record's extra fields.
+def _inject_trace_context_to_logger(record: dict[str, Any]) -> None:
+    """Stamp the active OpenTelemetry trace_id and span_id onto a Loguru log record.
+
+    Registered as a Loguru patcher so every log record emitted inside an active
+    span carries the trace and span IDs. This allows log entries to be correlated
+    with traces in the observability backend (e.g. Grafana Tempo).
+
+    Does nothing when there is no active or valid span (e.g. startup logs).
 
     Args:
-        record: The log record to modify.
+        record: The Loguru log record to modify.
     """
     span = trace.get_current_span()
     span_context = span.get_span_context()
 
     if span_context and span_context.is_valid:
-        span_context = span.get_span_context()
         record["extra"]["trace_id"] = trace.format_trace_id(span_context.trace_id)
         record["extra"]["span_id"] = trace.format_span_id(span_context.span_id)
 
 
-def setup_otlp_logs(resource: Resource) -> None:
-    """Set up OpenTelemetry logging for the FastAPI application.
+# ---------------------------------------------------------------------------
+# Private setup helpers
+# ---------------------------------------------------------------------------
+
+
+def _setup_traces(resource: Resource) -> TracerProvider:
+    """Create a TracerProvider with a gRPC OTLP span exporter.
+
+    Spans are exported asynchronously via BatchSpanProcessor. The provider is
+    registered globally so opentelemetry.trace.get_tracer() picks it up.
 
     Args:
-        resource: The OpenTelemetry resource to associate with log records.
-    """
-    logger_provider = LoggerProvider(resource=resource)
-    set_logger_provider(logger_provider)
-    exporter = OTLPLogExporter(
-        endpoint=config.otel_exporter_otlp_endpoint,
-        insecure=config.otel_exporter_otlp_insecure,
-    )
-
-    # Add batch processor for efficient log handling
-    logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
-
-    # Forward Loguru records to the OTLP pipeline.
-    # The SDK automatically attaches trace_id/span_id to each OTLP record when an active span exists.
-    handler = LoggingHandler(logger_provider=logger_provider)
-    logger.add(
-        handler,
-        level=config.log_level,
-        format=LOG_FORMAT,
-        enqueue=False,  # Do not use Loguru's queue since OTLP exporter handles batching
-        serialize=config.log_serialized,
-    )
-
-
-def setup_otlp_metrics(resource: Resource) -> MeterProvider:
-    """Set up OpenTelemetry metrics for the FastAPI application.
-
-    Args:
-        resource: The OpenTelemetry resource to associate with metrics.
+        resource: Service metadata attached to every exported span.
 
     Returns:
-        MeterProvider: The configured OpenTelemetry MeterProvider instance.
+        The configured TracerProvider.
+    """
+    trace_provider = TracerProvider(resource=resource)
+    otlp_span_exporter = OTLPSpanExporter(
+        insecure=config.otel_exporter_otlp_insecure,
+        endpoint=config.otel_exporter_otlp_endpoint,
+    )
+    trace_provider.add_span_processor(BatchSpanProcessor(otlp_span_exporter))
+    trace.set_tracer_provider(trace_provider)
+    return trace_provider
+
+
+def _setup_metrics(resource: Resource) -> MeterProvider:
+    """Create a MeterProvider with a gRPC OTLP metric exporter.
+
+    Metrics are scraped at the interval defined by config.otel_metric_export_interval
+    and pushed via PeriodicExportingMetricReader. The provider is registered globally
+    so opentelemetry.metrics.get_meter() picks it up.
+
+    Args:
+        resource: Service metadata attached to every exported metric.
+
+    Returns:
+        The configured MeterProvider.
     """
     otlp_metric_exporter = OTLPMetricExporter(
         insecure=config.otel_exporter_otlp_insecure,
@@ -89,53 +108,90 @@ def setup_otlp_metrics(resource: Resource) -> MeterProvider:
     return meter_provider
 
 
-def setup_otlp_traces(resource: Resource) -> TracerProvider:
-    """Set up OpenTelemetry tracing for the FastAPI application.
+def _setup_logs(resource: Resource) -> None:
+    """Bridge Loguru into the OTLP log pipeline.
+
+    Creates a LoggerProvider with a gRPC OTLP exporter, then attaches an
+    OpenTelemetry LoggingHandler as a Loguru sink. Every record emitted by
+    Loguru is forwarded to the collector via BatchLogRecordProcessor.
 
     Args:
-        resource: The OpenTelemetry resource to associate with traces.
+        resource: Service metadata attached to every exported log record.
+    """
+    logger_provider = LoggerProvider(resource=resource)
+    set_logger_provider(logger_provider)
+
+    exporter = OTLPLogExporter(
+        endpoint=config.otel_exporter_otlp_endpoint,
+        insecure=config.otel_exporter_otlp_insecure,
+    )
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
+
+    # Forward Loguru records to the OTLP pipeline.
+    # The SDK automatically attaches trace_id/span_id to each OTLP record when an active span exists.
+    handler = LoggingHandler(logger_provider=logger_provider)
+    logger.add(
+        handler,
+        level=config.log_level,
+        format=LOG_FORMAT,
+        enqueue=False,  # OTLP exporter handles batching; no need for Loguru's queue
+        serialize=config.log_serialized,
+    )
+
+
+def _build_resource() -> Resource:
+    """Build the OpenTelemetry Resource that identifies this service.
+
+    The resource attributes are attached to every span, metric, and log record
+    exported to the collector, enabling filtering and grouping in the backend.
 
     Returns:
-        TracerProvider: The configured OpenTelemetry TracerProvider instance.
+        A Resource populated with service name, version, and deployment environment.
     """
-    trace_provider = TracerProvider(resource=resource)
-    otlp_span_exporter = OTLPSpanExporter(
-        insecure=config.otel_exporter_otlp_insecure,
-        endpoint=config.otel_exporter_otlp_endpoint,
+    return Resource.create(
+        {
+            "service.name": config.otel_service_name,
+            "service.version": config.api_version,
+            "deployment.environment": config.environment,
+        }
     )
-    trace_provider.add_span_processor(BatchSpanProcessor(otlp_span_exporter))
-    trace.set_tracer_provider(trace_provider)
 
-    return trace_provider
+
+# ---------------------------------------------------------------------------
+# Public entry point
+# ---------------------------------------------------------------------------
 
 
 def setup_otlp(app: FastAPI) -> None:
-    """Set up OpenTelemetry tracing, metrics and logging for the FastAPI application.
+    """Initialise OpenTelemetry tracing, metrics, and logging for the FastAPI application.
+
+    Skips setup entirely when config.otel_enabled is False (e.g. local dev).
+
+    Steps performed when enabled:
+    1. Build a shared Resource with service metadata.
+    2. Configure OTLP exporters for traces, metrics, and logs.
+    3. Instrument FastAPI automatically (HTTP spans + metrics) via FastAPIInstrumentor.
+    4. Register a Loguru patcher to stamp trace_id/span_id on every log record.
 
     Args:
-        app: The FastAPI application instance to instrument with OpenTelemetry.
+        app: The FastAPI application instance to instrument.
     """
     if not config.otel_enabled:
         logger.info("opentelemetry_disabled")
         return
 
-    resource = Resource.create(
-        {
-            "deployment.environment": config.environment,
-            "service.version": config.api_version,
-            "service.name": config.otel_service_name,
-        }
-    )
-    trace_provider = setup_otlp_traces(resource)
-    meter_provider = setup_otlp_metrics(resource)
-    setup_otlp_logs(resource)
-
-    # Patch Loguru records with trace_id/span_id for stdout/file sinks
-    logger.configure(patcher=inject_trace_context_to_logger)  # type: ignore [arg-type]
+    resource = _build_resource()
+    trace_provider = _setup_traces(resource)
+    meter_provider = _setup_metrics(resource)
+    _setup_logs(resource)
 
     FastAPIInstrumentor.instrument_app(
         app,
         tracer_provider=trace_provider,
         meter_provider=meter_provider,
         excluded_urls=",".join(EXCLUDED_PATHS),
+        http_capture_headers_server_response=["x-request-id"],
     )
+
+    # Register the trace context patcher once at startup
+    register_log_patcher(_inject_trace_context_to_logger)

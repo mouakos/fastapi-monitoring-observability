@@ -1,4 +1,4 @@
-"""Shared utilities for extracting structured request information."""
+"""Shared utilities and helper functions for the FastAPI application."""
 
 from dataclasses import dataclass
 
