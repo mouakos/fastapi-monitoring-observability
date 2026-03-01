@@ -29,7 +29,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 from app.logging import LOG_FORMAT, register_log_patcher
-from app.settings import EXCLUDED_PATHS, config
+from app.settings import config
 
 # ---------------------------------------------------------------------------
 # Log patcher — injects trace context into every Loguru record
@@ -189,7 +189,6 @@ def setup_otlp(app: FastAPI) -> None:
         app,
         tracer_provider=trace_provider,
         meter_provider=meter_provider,
-        excluded_urls=",".join(EXCLUDED_PATHS),
         http_capture_headers_server_response=["x-request-id"],
     )
 
