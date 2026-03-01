@@ -40,6 +40,7 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
     logger.info("Application is shutting down...")
     # Perform any additional shutdown tasks here if needed (e.g. cleanup, flushing) before the app fully stops
     logger.info("Application shutting down completed.")
+    await logger.complete()  # flush enqueued log records before process exits
 
 
 app = FastAPI(

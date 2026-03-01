@@ -103,6 +103,8 @@ async def _run_background_work(ctx: object) -> None:
 @router.get("/background-task", summary="Background Task Trace Propagation")
 async def background_task_endpoint(background_tasks: BackgroundTasks) -> dict[str, str]:
     """Endpoint that enqueues a background task to verify that OpenTelemetry trace context is correctly propagated to background work executed after the response is sent."""
+    # Always capture the current context at the time of the request and pass it to the background task.
+    # This ensures that even if the background task runs after the request scope has ended, it still has access to the trace context for proper correlation in Tempo.
     ctx = otel_context.get_current()
     background_tasks.add_task(_run_background_work, ctx)
     logger.info("background_task_enqueued")
