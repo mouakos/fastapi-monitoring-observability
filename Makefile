@@ -1,4 +1,4 @@
-.PHONY: help install sync run dev test lint format mypy pre-commit docker-up docker-down docker-build docker-logs docker-restart clean
+.PHONY: help install sync run dev test lint format mypy pre-commit docker-up docker-down docker-purge docker-build docker-logs docker-restart clean
 
 # Default target
 help:
@@ -13,6 +13,7 @@ help:
 	@echo "  make pre-commit     Run pre-commit hooks"
 	@echo "  make docker-up      Start all containers"
 	@echo "  make docker-down    Stop all containers"
+	@echo "  make docker-purge   Stop all containers and delete volumes"
 	@echo "  make docker-build   Build Docker images"
 	@echo "  make docker-logs    View container logs"
 	@echo "  make docker-restart Restart all containers"
@@ -48,6 +49,9 @@ docker-up:
 
 docker-down:
 	docker compose down
+
+docker-purge:
+	docker compose down -v
 
 docker-build:
 	docker compose build

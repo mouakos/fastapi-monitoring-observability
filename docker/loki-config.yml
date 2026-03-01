@@ -1,7 +1,7 @@
 auth_enabled: false
 
 server:
-  http_listen_port: 3100 # Promtail pushes logs here, Grafana queries here
+  http_listen_port: 3100 # OTel Collector pushes logs here (OTLP), Grafana queries here
 
 # Common configuration - shared settings across all Loki components
 common:
@@ -37,3 +37,6 @@ limits_config:
 
 compactor:
   working_directory: /loki/compactor # Directory for compactor to store intermediate files
+  compaction_interval: 10m # How often to run compaction
+  retention_enabled: true # Must be true for retention_period to take effect
+  delete_request_store: filesystem # Where to store pending delete requests

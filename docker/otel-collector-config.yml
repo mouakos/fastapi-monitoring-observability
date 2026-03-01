@@ -10,10 +10,12 @@ receivers:
 # Processors can be used to batch, filter, or transform telemetry data before exporting
 processors:
   batch:
+    timeout: 5s
+    send_batch_size: 1024
 
 # Exporters send the processed telemetry data to external systems like Tempo and Prometheus
 exporters:
-  otlp:
+  otlp/tempo:
     endpoint: tempo:4317 # Export traces to Tempo using OTLP gRPC
     tls:
       insecure: true
@@ -23,15 +25,23 @@ exporters:
     namespace: "otel" # Optional: Prefix for metric names
     enable_open_metrics: true # Expose metrics in OpenMetrics format (required for exemplars)
 
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp # Export logs to Loki using OTLP HTTP
+
 # Service defines the pipelines that connect receivers, processors, and exporters
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp]
+      exporters: [otlp/tempo]
 
     metrics:
       receivers: [otlp]
       processors: [batch]
       exporters: [prometheus]
+
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/loki]
