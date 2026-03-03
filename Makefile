@@ -63,7 +63,4 @@ docker-restart:
 	docker compose restart
 
 clean:
-	pwsh -Command "Get-ChildItem -Recurse -Filter '__pycache__' -Directory | Remove-Item -Recurse -Force"
-	pwsh -Command "if (Test-Path .pytest_cache) { Remove-Item -Recurse -Force .pytest_cache }"
-	pwsh -Command "if (Test-Path .mypy_cache) { Remove-Item -Recurse -Force .mypy_cache }"
-	pwsh -Command "if (Test-Path .ruff_cache) { Remove-Item -Recurse -Force .ruff_cache }"
+	uv run python -c "import shutil, pathlib; [shutil.rmtree(p) for p in pathlib.Path('.').rglob('__pycache__') if p.is_dir()]; [shutil.rmtree(d) for d in ['.pytest_cache', '.mypy_cache', '.ruff_cache'] if pathlib.Path(d).exists()]"
