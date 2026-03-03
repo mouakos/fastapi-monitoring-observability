@@ -41,7 +41,6 @@ limits_config:
         attributes:
           - level
           - trace_id
-          - request_id
           - version
 
 compactor:

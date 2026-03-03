@@ -20,7 +20,6 @@ processors:
         statements:
           - set(attributes["level"], severity_text) # severity_text → "level"
           - set(attributes["trace_id"], attributes["extra"]["trace_id"]) # extra.trace_id → "trace_id"
-          - set(attributes["request_id"], attributes["extra"]["request_id"]) # extra.request_id → "request_id"
           - set(attributes["version"], attributes["extra"]["version"]) # extra.version → "version" (Loki label)
 
 # Exporters send the processed telemetry data to external systems like Tempo and Prometheus

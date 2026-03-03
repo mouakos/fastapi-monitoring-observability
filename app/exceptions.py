@@ -1,6 +1,5 @@
 """This module contains the exception handlers for the FastAPI application."""
 
-from asgi_correlation_id import correlation_id
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from loguru import logger
@@ -35,8 +34,4 @@ def register_exception_handlers(app: FastAPI) -> None:
             http_status_code=500,
         ).exception("unhandled_exception")
 
-        return JSONResponse(
-            status_code=500,
-            content={"detail": "Internal Server Error"},
-            headers={"X-Request-ID": correlation_id.get() or ""},
-        )
+        return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})

@@ -43,7 +43,7 @@ def register_log_patcher(fn: Callable[[dict[str, Any]], None]) -> None:
     """Add a patcher function to the global Loguru patcher registry.
 
     Patchers are called on every log record before it is forwarded to any sink.
-    Use this to inject context (e.g. request_id, trace_id) into
+    Use this to inject context (e.g. trace_id, span_id) into
     record["extra"] from a ContextVar or any other source.
 
     Patchers are applied in registration order. Registering the same function

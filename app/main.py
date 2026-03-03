@@ -7,7 +7,6 @@ from fastapi import FastAPI
 from loguru import logger
 
 from app.api import router
-from app.correlation_id import setup_correlation_id
 from app.exceptions import register_exception_handlers
 from app.logging import setup_logging
 from app.middleware.logging import RequestLoggingMiddleware
@@ -76,12 +75,11 @@ setup_otlp(app)
 
 # ---------------------------------------------------------------------------
 # Middleware — registered in LIFO order, so last added runs first
-#   execution order: CorrelationId → RequestLogging → Metrics → app
+#   execution order: RequestLogging → Metrics → app
 # ---------------------------------------------------------------------------
 
 app.add_middleware(MetricsMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
-setup_correlation_id(app)  # adds CorrelationIdMiddleware (outermost)
 
 # ---------------------------------------------------------------------------
 # Exception handlers & routes

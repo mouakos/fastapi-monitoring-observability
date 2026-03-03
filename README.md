@@ -60,7 +60,7 @@
 
 This project is a **self-contained, fully observable FastAPI service** wired to the **LGTM stack** (Loki, Grafana, Tempo, Prometheus) via a single OpenTelemetry Collector. Every request produces correlated logs, metrics, and traces — so you can jump from a Grafana dashboard panel straight to the trace, and from the trace directly to the matching log lines, without any manual ID copying.
 
-- **Structured logging** — Loguru enriches every log record with `trace_id`, `span_id`, and `request_id`; JSON format in production, human-readable text in development.
+- **Structured logging** — Loguru enriches every log record with `trace_id` and `span_id`; JSON format in production, human-readable text in development.
 - **Metrics** — `MetricsMiddleware` records request count, latency histogram, and in-flight gauge using the OTel SDK; Prometheus scrapes the Collector's exporter endpoint.
 - **Distributed tracing** — `FastAPIInstrumentor` and `HTTPXClientInstrumentor` produce automatic spans; manual child spans are added for background tasks and nested calls.
 - **Trace ↔ log correlation** — `trace_id` is a Loki index label and a Prometheus exemplar field, enabling one-click navigation between all three signals in Grafana.
@@ -269,7 +269,6 @@ fastapi-monitoring-observability/
 │   ├── settings.py               # Pydantic Settings — config from env / .env
 │   ├── otel.py                   # OTel SDK setup: traces, metrics, logs
 │   ├── logging.py                # Loguru setup, patcher registry, stdlib bridge
-│   ├── correlation_id.py         # asgi-correlation-id setup (X-Request-ID)
 │   ├── exceptions.py             # Global exception handlers
 │   ├── context.py                # ContextVar helpers
 │   ├── utils.py                  # Shared utilities (route path extraction, etc.)
@@ -336,9 +335,6 @@ curl http://localhost:8000/slow?delay=1
 
 # Generate a burst for load testing
 for i in $(seq 1 50); do curl -s http://localhost:8000/random-status > /dev/null; done
-
-# With a custom request ID (visible in logs)
-curl -H "X-Request-ID: my-debug-id-123" http://localhost:8000/trace-nested
 ```
 
 ---
@@ -389,7 +385,7 @@ graph LR
 
 ### 📝 Logs — Loki
 
-Structured logs are emitted by **Loguru**, enriched with `trace_id`, `span_id`, and `request_id`, then forwarded to **Loki** through the OTel Collector over OTLP HTTP.
+Structured logs are emitted by **Loguru**, enriched with `trace_id` and `span_id`, then forwarded to **Loki** through the OTel Collector over OTLP HTTP.
 
 Log pipeline:
 
@@ -420,7 +416,6 @@ Loki index labels (low-cardinality, fast filter):
 | `deployment_environment` | `development`   | `deployment.environment` OTel resource attribute | Loki default — dots converted to underscores                      |
 | `level`                  | `INFO`          | `severity_text` OTLP field                       | Copied to log attribute by OTel Collector `transform/logs`        |
 | `trace_id`               | `4bf92f3577b3…` | `extra.trace_id` Loguru field                    | Lifted from nested `extra` map by OTel Collector `transform/logs` |
-| `request_id`             | `853d8d00…`     | `extra.request_id` Loguru field                  | Lifted from nested `extra` map by OTel Collector `transform/logs` |
 | `version`                | `1.0.0`         | `extra.version` Loguru field                     | Lifted from nested `extra` map by OTel Collector `transform/logs` |
 
 Everything else (message body, `span_id`, `http_method`, `http_path`, `duration_ms`, etc.) is stored as **structured metadata**.
@@ -428,7 +423,7 @@ Everything else (message body, `span_id`, `http_method`, `http_path`, `duration_
 **Sample log record — development (`LOG_SERIALIZED=false`)**:
 
 ```
-2026-03-03 14:30:01 | INFO     | app.middleware.logging:dispatch:44 | http_request - {'version': '1.0.0', 'environment': 'development', 'http_method': 'GET', 'http_path': '/random-status', 'client_ip': '172.18.0.1', 'http_status_code': 200, 'duration_ms': 0.75, 'trace_id': 'cc6ef9e52e64227252fb90bbc20b9202', 'span_id': 'e8150912c7c7b3b3', 'request_id': '1d9b3d7b18214b31a638abfcc8f71014'}
+2026-03-03 14:30:01 | INFO     | app.middleware.logging:dispatch:44 | http_request - {'version': '1.0.0', 'environment': 'development', 'http_method': 'GET', 'http_path': '/random-status', 'client_ip': '172.18.0.1', 'http_status_code': 200, 'duration_ms': 0.75, 'trace_id': 'cc6ef9e52e64227252fb90bbc20b9202', 'span_id': 'e8150912c7c7b3b3'}
 ```
 
 **Sample log record — production (`LOG_SERIALIZED=true`)**:
@@ -453,8 +448,7 @@ Everything else (message body, `span_id`, `http_method`, `http_path`, `duration_
       "http_status_code": 400,
       "duration_ms": 1.31,
       "trace_id": "208f777a9b3b9daad1f60be1bf944d38",
-      "span_id": "c20b939337783778",
-      "request_id": "1c82ab2985494e95999ad2159eab5b66"
+      "span_id": "c20b939337783778"
     }
   }
 }
@@ -588,9 +582,6 @@ topk(5,
 # Error rate per minute
 sum(count_over_time({service_name="fastapi-app", level="ERROR"} [1m]))
 
-# Logs for a specific request ID (indexed label — no json parser needed)
-{service_name="fastapi-app", request_id="a1b2c3d4"}
-
 # Log volume by level over time
 sum by (level) (count_over_time({service_name="fastapi-app"} [1m]))
 ```
@@ -641,17 +632,15 @@ sum by (level) (count_over_time({service_name="fastapi-app"} [1m]))
 
 ## 🔗 How Correlation Works
 
-The three signals are correlated via two shared identifiers injected into every log record:
+The three signals are correlated via a single shared identifier — `trace_id` — injected into every log record:
 
 ```mermaid
 graph TB
     req(["Incoming HTTP Request"])
 
-    req --> cid["CorrelationIdMiddleware<br/>Reads X-Request-ID header<br/>or generates a UUID"]
     req --> inst["FastAPIInstrumentor<br/>Starts OTel root span"]
 
-    cid -- "request_id" --> logline["Log Record<br/>request_id · trace_id · span_id<br/>method · path · status_code · duration_ms"]
-    inst -- "trace_id + span_id" --> logline
+    inst -- "trace_id + span_id" --> logline["Log Record<br/>trace_id · span_id<br/>method · path · status_code · duration_ms"]
 
     inst -- "OTLP gRPC" --> tempo[("Tempo")]
     logline -- "OTLP HTTP" --> loki[("Loki")]
@@ -669,7 +658,7 @@ graph TB
     classDef viz       fill:#e74c3c,stroke:#a83226,stroke-width:2px,color:#fff
 
     class req request
-    class cid,inst app
+    class inst app
     class logline pipeline
     class tempo,loki,prom storage
     class grafana viz
@@ -677,11 +666,10 @@ graph TB
 
 **Correlation walk-through:**
 
-1. A request arrives. `CorrelationIdMiddleware` reads the `X-Request-ID` header or generates a UUID — this becomes the `request_id` for the lifetime of the request.
-2. `FastAPIInstrumentor` starts an OTel root span and makes `trace_id` and `span_id` available in the active context. Both values are bound into every Loguru log record emitted during that request.
-3. If the handler makes an outbound call via `httpx`, `HTTPXClientInstrumentor` injects the W3C `traceparent` header, propagating `trace_id` and `span_id` to the downstream service so the full call chain appears as a single trace.
-4. `RequestLoggingMiddleware` emits an log line on completion, carrying `request_id`, `trace_id`, `span_id`, method, path, status code, and duration — all in one record.
-5. Every log line is forwarded to Loki with `trace_id` as an indexed label. Every histogram data point is stored in Prometheus with `trace_id` as an exemplar. Every span is stored in Tempo indexed by `trace_id`.
+1. `FastAPIInstrumentor` starts an OTel root span and makes `trace_id` and `span_id` available in the active context. Both values are bound into every Loguru log record emitted during that request.
+2. If the handler makes an outbound call via `httpx`, `HTTPXClientInstrumentor` injects the W3C `traceparent` header, propagating `trace_id` and `span_id` to the downstream service so the full call chain appears as a single trace.
+3. `RequestLoggingMiddleware` emits a log line on completion, carrying `trace_id`, `span_id`, method, path, status code, and duration — all in one record.
+4. Every log line is forwarded to Loki with `trace_id` as an indexed label. Every histogram data point is stored in Prometheus with `trace_id` as an **exemplar**. Every span is stored in Tempo indexed by `trace_id`.
 
 **Navigation in Grafana — all three paths:**
 
@@ -836,7 +824,6 @@ If the collector receives data but Tempo/Loki/Prometheus do not, the issue is in
 **Libraries used**
 - [Loguru](https://loguru.readthedocs.io/en/stable/) — structured logging for Python
 - [FastAPI](https://fastapi.tiangolo.com/) — web framework
-- [asgi-correlation-id](https://github.com/snok/asgi-correlation-id) — request ID middleware
 - [uv](https://docs.astral.sh/uv/) — Python package manager used in this project
 
 ---
