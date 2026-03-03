@@ -34,6 +34,15 @@ storage_config:
 limits_config:
   retention_period: 168h # Retain logs for 7 days (168 hours)
   volume_enabled: true # Enable volume-based retention (delete old data when volume limit is reached)
+  # Promote OTLP attributes to Loki stream labels (indexed, fast filter)
+  otlp_config:
+    log_attributes:
+      - action: index_label
+        attributes:
+          - level
+          - trace_id
+          - request_id
+          - version
 
 compactor:
   working_directory: /loki/compactor # Directory for compactor to store intermediate files

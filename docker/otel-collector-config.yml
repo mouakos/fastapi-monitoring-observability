@@ -13,6 +13,16 @@ processors:
     timeout: 5s
     send_batch_size: 1024
 
+  # Copy top-level OTLP log fields into attributes so Loki can promote them to index labels
+  transform/logs:
+    log_statements:
+      - context: log
+        statements:
+          - set(attributes["level"], severity_text) # severity_text → "level"
+          - set(attributes["trace_id"], attributes["extra"]["trace_id"]) # extra.trace_id → "trace_id"
+          - set(attributes["request_id"], attributes["extra"]["request_id"]) # extra.request_id → "request_id"
+          - set(attributes["version"], attributes["extra"]["version"]) # extra.version → "version" (Loki label)
+
 # Exporters send the processed telemetry data to external systems like Tempo and Prometheus
 exporters:
   otlp/tempo:
@@ -27,6 +37,10 @@ exporters:
 
   otlphttp/loki:
     endpoint: http://loki:3100/otlp # Export logs to Loki using OTLP HTTP
+
+  # Prints full OTLP record to collector stdout — temporary, for debugging
+  debug:
+    verbosity: detailed
 
 # Service defines the pipelines that connect receivers, processors, and exporters
 service:
@@ -43,5 +57,5 @@ service:
 
     logs:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [otlphttp/loki]
+      processors: [transform/logs, batch]
+      exporters: [otlphttp/loki, debug]

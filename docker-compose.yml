@@ -6,7 +6,7 @@ services:
     build: .
     container_name: fastapi-app
     environment:
-      LOG_FORMAT: json
+      LOG_SERIALIZED: true
       LOG_LEVEL: INFO
       LOG_TO_FILE: false
       OTEL_SERVICE_NAME: fastapi-app
