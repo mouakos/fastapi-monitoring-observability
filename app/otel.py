@@ -147,12 +147,11 @@ def _build_resource() -> Resource:
     exported to the collector, enabling filtering and grouping in the backend.
 
     Returns:
-        A Resource populated with service name, version, and deployment environment.
+        A Resource populated with service name and deployment environment.
     """
     return Resource.create(
         {
             "service.name": config.otel_service_name,
-            "service.version": config.api_version,
             "deployment.environment": config.environment,
         }
     )
