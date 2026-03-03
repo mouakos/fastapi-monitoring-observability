@@ -1,0 +1,10 @@
+# This file keeps the directory tracked by git.
+# Replace the placeholder images in README.md with real screenshots:
+#
+#   docker-stack-overview.png   - Docker Desktop showing all running containers
+#   swagger-ui.png              - FastAPI Swagger UI at http://localhost:8000/docs
+#   prometheus-metrics.png      - Prometheus UI showing otel_http_* metrics
+#   loki-explore.png            - Grafana Explore with a LogQL query
+#   tempo-trace.png             - Grafana Tempo trace detail view
+#   grafana-dashboard.png       - Main FastAPI observability dashboard
+#   grafana-trace-log.png       - Grafana trace-to-log correlation view
