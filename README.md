@@ -25,6 +25,7 @@
 - [FastAPI Monitoring \& Observability](#fastapi-monitoring--observability)
   - [📋 Table of Contents](#-table-of-contents)
   - [📖 Overview](#-overview)
+  - [✨ Highlights](#-highlights)
   - [🏗️ Architecture](#️-architecture)
   - [📦 Prerequisites](#-prerequisites)
   - [🚀 Quick Start](#-quick-start)
@@ -58,12 +59,15 @@ Built to explore production-grade observability patterns in Python — specifica
 
 This project is a **self-contained, fully observable FastAPI service** wired to the **LGTM stack** (Loki, Grafana, Tempo, Prometheus) via a single OpenTelemetry Collector. Every request produces correlated logs, metrics, and traces — so you can jump from a Grafana dashboard panel straight to the trace, and from the trace directly to the matching log lines, without any manual ID copying.
 
-- **Structured logging** — Loguru enriches every log record with `trace_id` and `span_id`; JSON format in production, human-readable text in development.
-- **Metrics** — `MetricsMiddleware` records request count, latency histogram, and in-flight gauge using the OTel SDK; Prometheus scrapes the Collector's exporter endpoint.
-- **Distributed tracing** — `FastAPIInstrumentor` and `HTTPXClientInstrumentor` produce automatic spans; manual child spans are added for background tasks and nested calls.
-- **Trace ↔ log correlation** — `trace_id` is a Loki index label and a Prometheus exemplar field, enabling one-click navigation between all three signals in Grafana.
-- **Pre-built Grafana dashboard** — auto-provisioned on first start; tracks the four golden signals (latency, traffic, error rate, saturation) with drill-down to traces and logs.
-- **One-command setup** — `make docker-up` starts the full stack (app + all backends + Grafana) with no manual configuration.
+---
+
+## ✨ Highlights
+
+- **Structured logging** — JSON logs enriched with `trace_id` and `span_id` on every request
+- **Metrics** — request count, latency histogram, and in-flight gauge scraped by Prometheus
+- **Distributed tracing** — automatic spans for every HTTP request and outbound call, with manual child spans for background tasks
+- **Trace ↔ log correlation** — jump from a log line to its trace, or from a trace to its logs, in one click in Grafana
+- **Pre-built Grafana dashboard** — auto-provisioned on first start with the four golden signals and drill-down to traces and logs
 
 ---
 
@@ -781,14 +785,7 @@ If the collector receives data but Tempo/Loki/Prometheus do not, the issue is in
 
 Found a bug, have a question, or want to share feedback? Feel free to [open an issue](https://github.com/mouakos/fastapi-monitoring-observability/issues) or [start a discussion](https://github.com/mouakos/fastapi-monitoring-observability/discussions).
 
-If you want to contribute:
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/your-feature`
-3. Make your changes and ensure all checks pass: `make lint && make mypy`
-4. Commit with a clear message and open a pull request against `main`
-
-Please keep PRs focused — one feature or fix per pull request.
+Read the [CONTRIBUTING.md](CONTRIBUTING.md) guide before submitting a pull request.
 
 ---
 

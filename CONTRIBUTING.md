@@ -1,24 +1,20 @@
 # 👋 Contributing to FastAPI Monitoring & Observability
 
-Thanks for your interest in contributing!
+Thanks for your interest in this project!
 
-## Before Opening an Issue
+## Found a bug or have an idea?
 
-- **Bug?** → Use the [Bug Report](.github/ISSUE_TEMPLATE/bug_report.md) template
-- **Feature idea?** → Use the [Feature Request](.github/ISSUE_TEMPLATE/feature_request.md) template
-- **Question or feedback?** → [Start a discussion](https://github.com/mouakos/fastapi-monitoring-observability/discussions) instead of opening an issue
+- [Open an issue](https://github.com/mouakos/fastapi-monitoring-observability/issues)
+- [Start a discussion](https://github.com/mouakos/fastapi-monitoring-observability/discussions) — for questions, feedback, or anything that isn't a bug
 
-## How to Contribute
+## How to contribute code
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/your-feature`
-3. Make your changes and ensure all checks pass:
+1. Fork the repository and clone it locally
+2. Create a branch for your change: `git checkout -b feat/your-feature`
+3. Make your changes and verify everything passes:
    ```bash
-   make lint
-   make mypy
+   make pre-commit
    ```
 4. Commit with a clear message and open a pull request against `main`
 
-Please keep PRs focused — one feature or fix per pull request.
-
-For full details, see the [Feedback & Contributing](README.md#-feedback--contributing) section of the README.
+Please keep pull requests focused — one feature or fix per PR.
