@@ -37,13 +37,6 @@ async def slow_endpoint(delay: float = 2.0) -> dict[str, str]:
     return {"message": f"Response after {delay}s"}
 
 
-@router.get("/load", summary="Load Test")
-def load_endpoint(count: int = 1000) -> dict[str, int]:
-    """Lightweight endpoint for high-volume load testing that performs a simple CPU-bound calculation to generate some load and test autoscaling and resource monitoring."""
-    result = sum(range(count))
-    return {"count": count, "result": result}
-
-
 @router.get("/random-status", summary="Random Status")
 def random_status() -> dict[str, str]:
     """Return a random HTTP status code (200, 300, 400, or 500) to test error rate monitoring and alerting."""

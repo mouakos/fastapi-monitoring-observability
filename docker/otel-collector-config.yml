@@ -13,7 +13,7 @@ processors:
     timeout: 5s
     send_batch_size: 1024
 
-  # Copy top-level OTLP log fields into attributes so Loki can promote them to index labels
+  # Copy OTLP log attributes to Loki stream labels for better indexing and querying in Loki
   transform/logs:
     log_statements:
       - context: log

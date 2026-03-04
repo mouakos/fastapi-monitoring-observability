@@ -7,6 +7,7 @@
 ![Python](https://img.shields.io/badge/python-3.13+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Production-green)
 ![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-enabled-purple)
+![OTel Collector](https://img.shields.io/badge/OTel_Collector-contrib-purple)
 ![Prometheus](https://img.shields.io/badge/Prometheus-metrics-orange)
 ![Grafana](https://img.shields.io/badge/Grafana-dashboards-orange)
 ![Loki](https://img.shields.io/badge/Loki-logs-yellow)
@@ -29,10 +30,10 @@
   - [🚀 Quick Start](#-quick-start)
     - [🐳 Option A — Full Docker Stack (Recommended)](#-option-a--full-docker-stack-recommended)
     - [💻 Option B — Local Development](#-option-b--local-development)
-  - [⚙️ Configuration](#️-configuration)
+    - [🚦 Generate traffic](#-generate-traffic)
   - [📁 Project Structure](#-project-structure)
+  - [⚙️ Configuration](#️-configuration)
   - [🔌 API Endpoints](#-api-endpoints)
-    - [🧪 Trying the endpoints](#-trying-the-endpoints)
   - [🔭 Observability Stack](#-observability-stack)
     - [📊 Metrics — Prometheus](#-metrics--prometheus)
     - [📝 Logs — Loki](#-logs--loki)
@@ -40,17 +41,11 @@
     - [📈 Dashboards — Grafana](#-dashboards--grafana)
     - [💬 Example Queries](#-example-queries)
   - [🔗 How Correlation Works](#-how-correlation-works)
-  - [🛠️ Development Guide](#️-development-guide)
-    - [✅ Run code quality checks](#-run-code-quality-checks)
-    - [🐳 Rebuild the Docker image](#-rebuild-the-docker-image)
-    - [📋 View container logs](#-view-container-logs)
-    - [🧹 Clean build artefacts](#-clean-build-artefacts)
   - [📜 Make Reference](#-make-reference)
   - [🔧 Troubleshooting](#-troubleshooting)
     - [Telemetry not appearing in Grafana](#telemetry-not-appearing-in-grafana)
     - [Containers fail to start](#containers-fail-to-start)
     - [App starts but reports no telemetry](#app-starts-but-reports-no-telemetry)
-  - [⭐ Best Practices](#-best-practices)
   - [📚 Further Reading](#-further-reading)
   - [📄 License](#-license)
 
@@ -122,15 +117,6 @@ graph TB
     class Grafana viz
 ```
 
-**System components:**
-
-- **FastAPI** — the instrumented application. Exposes HTTP endpoints used to demonstrate and test all three observability signals (``logs``, ``metrics`` and ``traces``). Middleware handles request logging, metrics recording, and correlation ID injection.
-- **OpenTelemetry Collector** — the single telemetry pipeline. Receives all signals from the app via OTLP gRPC, processes them (batching, resource detection), and exports to each backend. Decouples the app from backend-specific SDKs.
-- **Prometheus** — time-series metrics store. Scrapes the Collector's Prometheus exporter endpoint  on a pull basis. Stores counters, histograms, and gauges for querying with PromQL.
-- **Loki** — log aggregation backend. Ingests structured logs from the Collector via OTLP HTTP. Indexes low-cardinality stream labels for fast filtering; stores all other fields as queryable structured metadata.
-- **Tempo** — distributed trace storage. Receives spans from the Collector via OTLP gRPC. Organizes spans into traces and supports TraceQL queries. Uses local disk storage with no external index.
-- **Grafana** — unified visualization layer. Queries all three backends through provisioned datasources. Ships with a pre-built dashboard and supports trace ↔ log cross-navigation.
-
 ---
 
 ## 📦 Prerequisites
@@ -141,7 +127,7 @@ graph TB
 | uv                | latest                    | `pip install uv` or [docs.astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/) |
 | Docker Desktop    | 4.x+                      | [docker.com](https://www.docker.com/products/docker-desktop/)                                    |
 | Docker Compose    | v2 (bundled with Desktop) | —                                                                                                |
-| Make *(optional)* | any                       | Windows: `winget install GnuWin32.Make`                                                          |
+| Make *(optional)* | any                       | macOS: `brew install make` · Windows: `winget install GnuWin32.Make` · Linux: pre-installed      |
 
 > **Make is optional** — every `make <target>` is a shortcut for a plain shell command. See the [Make Reference](#-make-reference) for the underlying commands you can run directly (e.g. `uv run uvicorn app.main:app --reload` instead of `make dev`).
 
@@ -174,17 +160,7 @@ Wait ~15 seconds for all containers to initialise, then open:
 > ![Docker stack overview](docs/images/docker-stack-overview.png)
 > *All containers running after `make docker-up`. Visible in Docker Desktop.*
 
-To stop and remove containers (keep volumes):
-
-```bash
-make docker-down
-```
-
-To stop and **delete all volumes** (full reset):
-
-```bash
-make docker-purge
-```
+> To stop containers or delete volumes, see [`make docker-down` / `make docker-purge`](#-make-reference) in the Make Reference.
 
 ---
 
@@ -192,19 +168,20 @@ make docker-purge
 
 Use this when you want hot-reload during development while the observability stack runs in Docker.
 
-**Step 1 — Clone and install**
+**Step 1 — Install**
 
 ```bash
-git clone https://github.com/mouakos/fastapi-monitoring-observability.git
-cd fastapi-monitoring-observability
-
 make install
 ```
 
 **Step 2 — Create a `.env` file**
 
 ```bash
+# macOS / Linux
 cp .env.template .env
+
+# Windows (PowerShell)
+Copy-Item .env.template .env
 ```
 
 Minimum `.env` for local development with Docker-hosted collector:
@@ -235,26 +212,28 @@ make dev
 uv run uvicorn app.main:app --reload
 ```
 
-The app is now available at http://localhost:8000/docs. Telemetry flows to the Docker-hosted collector.
+The app is now available at http://localhost:8000/docs.
 
 ---
 
-## ⚙️ Configuration
+### 🚦 Generate traffic
 
-All settings are defined in `app/settings.py` using Pydantic Settings. Values are read from environment variables or a `.env` file (case-insensitive).
+Once the stack is running, run the traffic script to populate the Grafana dashboards:
 
-| Variable                      | Default          | Description                                                       |
-| ----------------------------- | ---------------- | ----------------------------------------------------------------- |
-| `LOG_LEVEL`                   | `INFO`           | Loguru log level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
-| `LOG_SERIALIZED`              | `false`          | Emit logs as JSON (enabled automatically inside Docker)           |
-| `LOG_TO_FILE`                 | `false`          | Write rotating log file to `logs/`                                |
-| `API_VERSION`                 | `1.0.0`          | Semver string embedded in `/info` response                        |
-| `ENVIRONMENT`                 | `development`    | `development` / `staging` / `production`                          |
-| `OTEL_ENABLED`                | `false`          | Master switch for all OTLP exporters                              |
-| `OTEL_SERVICE_NAME`           | `fastapi-app`    | Service name tag on all telemetry signals                         |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `localhost:4317` | gRPC endpoint of the OTel Collector                               |
-| `OTEL_EXPORTER_OTLP_INSECURE` | `true`           | Disable TLS for the gRPC connection                               |
-| `OTEL_METRIC_EXPORT_INTERVAL` | `5000`           | Metric push interval in milliseconds                              |
+```bash
+# Default: 50 requests with random jitter
+uv run python scripts/generate_traffic.py
+
+# Custom round count
+uv run python scripts/generate_traffic.py --rounds 100
+
+# Run continuously for 60 seconds
+uv run python scripts/generate_traffic.py --duration 60
+```
+
+The script hits every endpoint with realistic weights — `/random-status` fires most often (error rate signal), `/slow` at three delays (latency distribution), `/crash` occasionally (exception traces), and `/chain`, `/trace-nested`, `/background-task` for distributed trace scenarios.
+
+Open Grafana at http://localhost:3000, navigate to **Dashboards → FastAPI Observability**, and request rate, latency, error rate, and live traces should appear within a few seconds.
 
 ---
 
@@ -306,6 +285,25 @@ fastapi-monitoring-observability/
 
 ---
 
+## ⚙️ Configuration
+
+All settings are defined in `app/settings.py` using Pydantic Settings. Values are read from environment variables or a `.env` file (case-insensitive).
+
+| Variable                      | Default          | Description                                                       |
+| ----------------------------- | ---------------- | ----------------------------------------------------------------- |
+| `LOG_LEVEL`                   | `INFO`           | Loguru log level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
+| `LOG_SERIALIZED`              | `false`          | Emit logs as JSON (enabled automatically inside Docker)           |
+| `LOG_TO_FILE`                 | `false`          | Write rotating log file to `logs/`                                |
+| `API_VERSION`                 | `1.0.0`          | Semver string embedded in `/info` response                        |
+| `ENVIRONMENT`                 | `development`    | `development` / `staging` / `production`                          |
+| `OTEL_ENABLED`                | `false`          | Master switch for all OTLP exporters                              |
+| `OTEL_SERVICE_NAME`           | `fastapi-app`    | Service name tag on all telemetry signals                         |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `localhost:4317` | gRPC endpoint of the OTel Collector                               |
+| `OTEL_EXPORTER_OTLP_INSECURE` | `true`           | Disable TLS for the gRPC connection                               |
+| `OTEL_METRIC_EXPORT_INTERVAL` | `5000`           | Metric push interval in milliseconds                              |
+
+---
+
 ## 🔌 API Endpoints
 
 All endpoints are reachable at `http://localhost:8000` and documented in Swagger at `/docs`.
@@ -316,26 +314,23 @@ All endpoints are reachable at `http://localhost:8000` and documented in Swagger
 
 | Method | Path               | Purpose                                               | What to verify in Grafana                        |
 | ------ | ------------------ | ----------------------------------------------------- | ------------------------------------------------ |
-| `GET`  | `/`                | Welcome message                                       | —                                                |
 | `GET`  | `/info`            | Service version and environment                       | —                                                |
 | `GET`  | `/slow?delay=2.0`  | Simulate high-latency response                        | Duration histogram spike in Prometheus           |
-| `GET`  | `/load?count=1000` | CPU-bound loop for load testing                       | Request rate and CPU metrics                     |
 | `GET`  | `/random-status`   | Returns random 2xx / 4xx / 5xx                        | Error rate tracking in Grafana                   |
 | `GET`  | `/crash`           | Triggers an unhandled `ZeroDivisionError`             | Exception log + 500 trace in Tempo               |
 | `GET`  | `/chain`           | Two sequential HTTPX outbound calls                   | Full distributed trace with child spans in Tempo |
 | `GET`  | `/trace-nested`    | Two manual child spans                                | Parent-child span hierarchy in Tempo             |
 | `GET`  | `/background-task` | Enqueued background task with propagated OTel context | Background span linked to request span in Tempo  |
-                                              
 
-### 🧪 Trying the endpoints
+**Try a request:**
 
 ```bash
-# Single request
 curl http://localhost:8000/slow?delay=1
-
-# Generate a burst for load testing
-for i in $(seq 1 50); do curl -s http://localhost:8000/random-status > /dev/null; done
+curl http://localhost:8000/random-status
+curl http://localhost:8000/chain
 ```
+
+> Use `scripts/generate_traffic.py` to send a realistic burst across all endpoints — see [Generate traffic](#-generate-traffic) in the Quick Start.
 
 ---
 
@@ -369,11 +364,11 @@ graph LR
 
 | Metric                          | Type      | Labels                                         | When recorded                          |
 | ------------------------------- | --------- | ---------------------------------------------- | -------------------------------------- |
-| `otel_http_request_count_total` | Counter   | `http.method`, `http.path`, `http.status_code` | Incremented once per completed request |
-| `otel_http_request_duration_ms` | Histogram | `http.method`, `http.path`, `http.status_code` | Observed with response time in ms      |
-| `otel_http_request_in_progress` | Gauge     | `http.method`, `http.path`                     | +1 on request start, −1 on request end |
+| `otel_http_request_count_total` | Counter   | `http_method`, `http_path`, `http_status_code` | Incremented once per completed request |
+| `otel_http_request_duration_ms` | Histogram | `http_method`, `http_path`, `http_status_code` | Observed with response time in ms      |
+| `otel_http_request_in_progress` | Gauge     | `http_method`, `http_path`                     | +1 on request start, −1 on request end |
 
-- The `http.path` label uses the **FastAPI route template** (e.g. `/slow`, `/chain`), not the raw URL, to keep label cardinality low and avoid a Prometheus series explosion.
+- The `http_path` label uses the **FastAPI route template** (e.g. `/slow`, `/chain`), not the raw URL, to keep label cardinality low and avoid a Prometheus series explosion.
 - The `otel_` prefix is set via `namespace: "otel"` in the OTel Collector's Prometheus exporter config (`docker/otel-collector-config.yml`).
 - **Exemplars** are attached to the histogram when `OTEL_ENABLED=true`. Prometheus must be started with `--enable-feature=exemplar-storage` (already set in `docker/prometheus-config.yml`) to store and expose them. Each exemplar carries the `trace_id` of the request that produced that data point.
 
@@ -408,7 +403,7 @@ graph LR
     class loki storage
 ```
 
-Loki index labels (low-cardinality, fast filter):
+Loki index labels are configured in `docker/loki-config.yml` via `otlp_config.log_attributes` (low-cardinality, fast filter):
 
 | Label                    | Value example   | Source                                           | Note                                                              |
 | ------------------------ | --------------- | ------------------------------------------------ | ----------------------------------------------------------------- |
@@ -464,7 +459,7 @@ Everything else (message body, `span_id`, `http_method`, `http_path`, `duration_
 
 Distributed traces are produced by the **OTel Python SDK** using a combination of auto-instrumentation and manual spans. `FastAPIInstrumentor` automatically creates a root HTTP span for every inbound request — capturing method, route, status code, and duration without any code changes. `HTTPXClientInstrumentor` wraps every outbound `httpx` call and injects the W3C `traceparent` header, propagating the trace context to downstream services. For deeper visibility, manual child spans are created in selected handlers (`/trace-nested`, `/background-task`) to represent discrete units of work within a single request.
 
-All spans are batched by `BatchSpanProcessor` and exported to the OTel Collector via OTLP gRPC. The Collector forwards them to **Tempo**, where they are stored on local disk and indexed by `trace_id` — no external index or object storage required. Traces are queryable in Grafana using **TraceQL**.
+All spans are batched by `BatchSpanProcessor` and exported to the OTel Collector via OTLP gRPC. The Collector forwards them to **Tempo**, where they are stored on local disk and indexed by `trace_id` — no external index or object storage required (configured in `docker/tempo-config.yml`). Traces are queryable in Grafana using **TraceQL**.
 
 Trace pipeline:
 
@@ -501,7 +496,7 @@ graph TB
 
 > **Grafana — Tempo trace detail**
 > ![Grafana Tempo trace detail](docs/images/tempo-trace.png)
-> *Full distributed trace view in Grafana Tempo, showing auto-instrumented spans and manual child spans.*
+> *Full distributed trace for a request queried in Grafana Explore using TraceQL (http://localhost:3000).*
 
 ---
 
@@ -509,13 +504,13 @@ graph TB
 
 Grafana is available at **http://localhost:3000** (admin / admin).
 
-Datasources are automatically provisioned on first start:
+Datasources are automatically provisioned on first start from `docker/grafana/provisioning/datasources/datasources.yml`:
 
-| Datasource | URL                      |
-| ---------- | ------------------------ |
-| Prometheus | `http://prometheus:9090` |
-| Loki       | `http://loki:3100`       |
-| Tempo      | `http://tempo:3200`      |
+| Datasource | UID          | URL                      |
+| ---------- | ------------ | ------------------------ |
+| Prometheus | `prometheus` | `http://prometheus:9090` |
+| Loki       | `loki`       | `http://loki:3100`       |
+| Tempo      | `tempo`      | `http://tempo:3200`      |
 
 The project ships a pre-built dashboard: `docker/grafana/provisioning/dashboards/fastapi-observability-dashboard.json`
 
@@ -555,11 +550,7 @@ topk(5,
 )
 ```
 
-**Label reference for this project:**
-- `http_path` — FastAPI route template (e.g. `/slow`, `/chain`)
-- `http_method` — HTTP verb (`GET`, `POST`, …)
-- `http_status_code` — response status code
-- All metrics are prefixed `otel_` (set via `namespace: "otel"` in the collector config)
+> See [Metrics — Prometheus](#-metrics--prometheus) for the full label and metric definitions.
 
 </details>
 
@@ -619,7 +610,8 @@ sum by (level) (count_over_time({service_name="fastapi-app"} [1m]))
 { rootSpan.traceID = "4bf92f3577b34da6a3ce929d0e0e4736" }
 ```
 
-**Attribute reference for this project:**
+**Key attributes for this project** (not exhaustive — see the [OTel semantic conventions](https://opentelemetry.io/docs/specs/semconv/) for the full list):
+
 - `resource.service.name` — set to `fastapi-app` via the OTel SDK `Resource`
 - `span.http.route` — FastAPI route template, set by `FastAPIInstrumentor`
 - `span.http.status_code` — HTTP response status code
@@ -671,6 +663,14 @@ graph TB
 3. `RequestLoggingMiddleware` emits a log line on completion, carrying `trace_id`, `span_id`, method, path, status code, and duration — all in one record.
 4. Every log line is forwarded to Loki with `trace_id` as an indexed label. Every histogram data point is stored in Prometheus with `trace_id` as an **exemplar**. Every span is stored in Tempo indexed by `trace_id`.
 
+The datasource provisioning file (`docker/grafana/provisioning/datasources/datasources.yml`) wires the UI links that make these paths navigable:
+
+| Datasource | Config key                    | What it enables                                                                  |
+| ---------- | ----------------------------- | -------------------------------------------------------------------------------- |
+| Prometheus | `exemplarTraceIdDestinations` | Clicking an exemplar dot opens the matching trace in Tempo                       |
+| Loki       | `derivedFields` (label match) | Extracts `trace_id` from each log line and adds a **Tempo** button               |
+| Tempo      | `tracesToLogsV2`              | The **Logs for this span** button jumps to matching Loki log lines by `trace_id` |
+
 **Navigation in Grafana — all three paths:**
 
 > **Logs → Trace**
@@ -684,51 +684,6 @@ graph TB
 > **Metrics → Trace (Exemplars)**
 > ![Grafana exemplar drill-down to Tempo](docs/images/prometheus-exemplars.png)
 > *In a Grafana histogram panel, enable **Exemplars** (toggle), run the query — exemplar dots appear on the chart. Click a dot, then click **Query with exemplar** to open the corresponding trace in Tempo.*
-
----
-
-## 🛠️ Development Guide
-
-### ✅ Run code quality checks
-
-```bash
-# Lint (Ruff)
-make lint
-
-# Format (Ruff)
-make format
-
-# Type check (Mypy strict)
-make mypy
-
-# All pre-commit hooks
-make pre-commit
-```
-
-### 🐳 Rebuild the Docker image
-
-After changing `pyproject.toml` or `Dockerfile`:
-
-```bash
-make docker-build
-make docker-restart
-```
-
-### 📋 View container logs
-
-```bash
-make docker-logs
-
-# Filter to one container
-docker compose logs -f otel-collector
-docker compose logs -f fastapi-app
-```
-
-### 🧹 Clean build artefacts
-
-```bash
-make clean   # removes __pycache__, .mypy_cache, .ruff_cache, .pytest_cache
-```
 
 ---
 
@@ -785,25 +740,16 @@ docker compose logs loki
 
 ```bash
 # Confirm OTEL_ENABLED is true inside the running container
+# macOS / Linux
 docker compose exec fastapi-app env | grep OTEL
+# Windows (PowerShell)
+docker compose exec fastapi-app env | Select-String OTEL
 
 # Watch the collector logs for incoming spans/metrics/logs
 docker compose logs -f otel-collector
 ```
 
 If the collector receives data but Tempo/Loki/Prometheus do not, the issue is in the collector's exporter config (`docker/otel-collector-config.yml`).
-
----
-
-## ⭐ Best Practices
-
-1. **Always include trace context in logs** — every log record carries `trace_id` and `span_id`, enabling direct navigation from a log line to the corresponding trace in Tempo
-2. **Use structured logging (JSON)** — Loguru emits JSON in production (`LOG_SERIALIZED=true`), making logs machine-parseable and queryable by field in Loki without regex
-3. **Keep metric labels low-cardinality** — `MetricsMiddleware` always uses the FastAPI route template rather than the raw URL, keeping Prometheus series count bounded regardless of traffic volume.
-4. **Monitor the 4 Golden Signals** — the pre-built Grafana dashboard tracks latency, traffic, error rate, and saturation (in-progress requests)
-5. **Use exemplars to jump from metrics to traces** — Prometheus exemplar storage (`--enable-feature=exemplar-storage`) attaches a `trace_id` to every metric data point, completing the metrics → traces link alongside the traces → logs link described in [How Correlation Works](#-how-correlation-works)
-6. **Set retention policies** — Loki's compactor has `retention_enabled: true`; configure `retention_period` in `loki-config.yml` to cap storage costs as log volume grows
-7. **Tag everything consistently** — all three signals share the same `service.name`, `deployment.environment`, and `service.version` resource attributes, set once on the OTel SDK `Resource` and propagated automatically to Tempo, Prometheus, and Loki
 
 ---
 
