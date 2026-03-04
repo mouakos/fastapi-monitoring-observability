@@ -47,11 +47,14 @@
     - [Containers fail to start](#containers-fail-to-start)
     - [App starts but reports no telemetry](#app-starts-but-reports-no-telemetry)
   - [📚 Further Reading](#-further-reading)
+  - [🤝 Feedback \& Contributing](#-feedback--contributing)
   - [📄 License](#-license)
 
 ---
 
 ## 📖 Overview
+
+Built to explore production-grade observability patterns in Python — specifically how to connect the three pillars (metrics, logs, traces) into a single correlated signal without vendor lock-in. The goal was to understand how OpenTelemetry, the LGTM stack, and Grafana's cross-datasource linking work together end-to-end in a realistic service.
 
 This project is a **self-contained, fully observable FastAPI service** wired to the **LGTM stack** (Loki, Grafana, Tempo, Prometheus) via a single OpenTelemetry Collector. Every request produces correlated logs, metrics, and traces — so you can jump from a Grafana dashboard panel straight to the trace, and from the trace directly to the matching log lines, without any manual ID copying.
 
@@ -771,6 +774,21 @@ If the collector receives data but Tempo/Loki/Prometheus do not, the issue is in
 - [Loguru](https://loguru.readthedocs.io/en/stable/) — structured logging for Python
 - [FastAPI](https://fastapi.tiangolo.com/) — web framework
 - [uv](https://docs.astral.sh/uv/) — Python package manager used in this project
+
+---
+
+## 🤝 Feedback & Contributing
+
+Found a bug, have a question, or want to share feedback? Feel free to [open an issue](https://github.com/mouakos/fastapi-monitoring-observability/issues) or [start a discussion](https://github.com/mouakos/fastapi-monitoring-observability/discussions).
+
+If you want to contribute:
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feat/your-feature`
+3. Make your changes and ensure all checks pass: `make lint && make mypy`
+4. Commit with a clear message and open a pull request against `main`
+
+Please keep PRs focused — one feature or fix per pull request.
 
 ---
 
