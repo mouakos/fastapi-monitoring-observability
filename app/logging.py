@@ -159,6 +159,10 @@ def _intercept_standard_logging(log_level: str) -> None:
     logging.root.handlers = [InterceptHandler()]
     logging.root.setLevel(log_level)
 
+    for name in logging.root.manager.loggerDict:
+        logging.getLogger(name).handlers = []
+        logging.getLogger(name).propagate = True
+
 
 # ---------------------------------------------------------------------------
 # Public entry point

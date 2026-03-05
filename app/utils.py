@@ -10,7 +10,6 @@ class RequestInfo:
     """Immutable snapshot of relevant HTTP request fields."""
 
     method: str
-    path: str
     route_path: str
     client_ip: str
     user_agent: str | None
@@ -28,7 +27,6 @@ def get_request_info(request: Request) -> RequestInfo:
     route = request.scope.get("route")
     return RequestInfo(
         method=request.method,
-        path=request.url.path,
         route_path=route.path if route else request.url.path,
         client_ip=request.client.host if request.client else "unknown",
         user_agent=request.headers.get("user-agent"),

@@ -20,7 +20,7 @@ from app.settings import config
 
 # Silencing uvicorn.access logs since they are already captured by the RequestLoggingMiddleware
 # and would otherwise be duplicated in the logs.
-_SILENCED_LOGGERS = ["uvicorn.access"]
+_SILENCED_LOGGERS = ["uvicorn.access", "httpx", "httpcore"]
 
 setup_logging(silenced_loggers=_SILENCED_LOGGERS)
 
@@ -32,13 +32,8 @@ setup_logging(silenced_loggers=_SILENCED_LOGGERS)
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
     """Lifespan function to perform startup and shutdown tasks."""
-    logger.info("Application is starting up...")
     # Perform any additional startup tasks here (e.g. warmup, preloading) if needed
-    logger.info("Application startup completed.")
     yield
-    logger.info("Application is shutting down...")
-    # Perform any additional shutdown tasks here if needed (e.g. cleanup, flushing) before the app fully stops
-    logger.info("Application shutting down completed.")
     await logger.complete()  # flush enqueued log records before process exits
 
 
@@ -46,10 +41,6 @@ app = FastAPI(
     lifespan=lifespan,
     title="FastAPI Monitoring and Observability",
     version=config.api_version,
-    servers=[],
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
     license_info={
         "name": "MIT License",
         "url": "https://opensource.org/license/mit/",
@@ -57,13 +48,6 @@ app = FastAPI(
     contact={
         "name": "Stephane Mouako",
         "url": "https://github.com/mouakos",
-    },
-    swagger_ui_parameters={
-        "syntaxHighlight.theme": "monokai",
-        "layout": "BaseLayout",
-        "filter": True,
-        "tryItOutEnabled": True,
-        "onComplete": "Ok",
     },
 )
 
