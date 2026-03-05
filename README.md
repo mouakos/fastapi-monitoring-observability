@@ -42,6 +42,7 @@
     - [📈 Dashboards — Grafana](#-dashboards--grafana)
     - [💬 Example Queries](#-example-queries)
   - [🔗 How Correlation Works](#-how-correlation-works)
+  - [🔬 Code Quality](#-code-quality)
   - [📜 Make Reference](#-make-reference)
   - [🔧 Troubleshooting](#-troubleshooting)
     - [Telemetry not appearing in Grafana](#telemetry-not-appearing-in-grafana)
@@ -238,9 +239,7 @@ uv run python scripts/generate_traffic.py --rounds 100
 uv run python scripts/generate_traffic.py --duration 60
 ```
 
-The script hits every endpoint with realistic weights — `/random-status` fires most often (error rate signal), `/slow` at three delays (latency distribution), `/crash` occasionally (exception traces), and `/chain`, `/trace-nested`, `/background-task` for distributed trace scenarios.
-
-Open Grafana at http://localhost:3000, navigate to **Dashboards → FastAPI Observability**, and request rate, latency, error rate, and live traces should appear within a few seconds.
+Open Grafana at http://localhost:3000, navigate to **Dashboards → FastAPI Observability**, and data should appear within a few seconds.
 
 ---
 
@@ -375,9 +374,7 @@ graph LR
 | `otel_http_request_duration_ms` | Histogram | `http_method`, `http_path`, `http_status_code` | Observed with response time in ms      |
 | `otel_http_request_in_progress` | Gauge     | `http_method`, `http_path`                     | +1 on request start, −1 on request end |
 
-- The `http_path` label uses the **FastAPI route template** (e.g. `/slow`, `/chain`), not the raw URL, to keep label cardinality low and avoid a Prometheus series explosion.
-- The `otel_` prefix is set via `namespace: "otel"` in the OTel Collector's Prometheus exporter config (`docker/otel-collector-config.yml`).
-- **Exemplars** are attached to the histogram when `OTEL_ENABLED=true`. Prometheus must be started with `--enable-feature=exemplar-storage` (already set in `docker/prometheus-config.yml`) to store and expose them. Each exemplar carries the `trace_id` of the request that produced that data point.
+> `http_path` uses the FastAPI route template (e.g. `/slow`), not the raw URL, to keep cardinality low. Exemplars carrying `trace_id` are attached to histogram data points when `OTEL_ENABLED=true`.
 
 > **Grafana — PromQL metrics explorer**
 > ![Grafana PromQL metrics explorer](docs/images/prometheus-metrics.png)
@@ -422,39 +419,13 @@ Loki index labels are configured in `docker/loki-config.yml` via `otlp_config.lo
 
 Everything else (message body, `span_id`, `http_method`, `http_path`, `duration_ms`, etc.) is stored as **structured metadata**.
 
-**Sample log record — development (`LOG_SERIALIZED=false`)**:
+**Sample log record (`LOG_SERIALIZED=false`)**:
 
 ```
-2026-03-03 14:30:01 | INFO     | app.middleware.logging:dispatch:44 | http_request - {'version': '1.0.0', 'environment': 'development', 'http_method': 'GET', 'http_path': '/random-status', 'client_ip': '172.18.0.1', 'http_status_code': 200, 'duration_ms': 0.75, 'trace_id': 'cc6ef9e52e64227252fb90bbc20b9202', 'span_id': 'e8150912c7c7b3b3'}
+2026-03-03 14:30:01 | INFO | app.middleware.logging:dispatch:44 | http_request - {'version': '1.0.0', 'environment': 'development', 'http_method': 'GET', 'http_path': '/random-status', 'client_ip': '172.18.0.1', 'http_status_code': 200, 'duration_ms': 0.75, 'trace_id': 'cc6ef9e52e64227252fb90bbc20b9202', 'span_id': 'e8150912c7c7b3b3'}
 ```
 
-**Sample log record — production (`LOG_SERIALIZED=true`)**:
-
-```json
-{
-  "text": "2026-03-03 15:27:31 | INFO | app.middleware.logging:dispatch:44 | http_request - {...}",
-  "record": {
-    "time": {"repr": "2026-03-03 15:27:31.763723+00:00", "timestamp": 1772551651.763723},
-    "level": {"name": "INFO", "no": 20},
-    "message": "http_request",
-    "name": "app.middleware.logging",
-    "function": "dispatch",
-    "line": 44,
-    "extra": {
-      "version": "1.0.0",
-      "environment": "development",
-      "http_method": "GET",
-      "http_path": "/random-status",
-      "client_ip": "172.18.0.1",
-      "user_agent": "Mozilla/5.0 ...",
-      "http_status_code": 400,
-      "duration_ms": 1.31,
-      "trace_id": "208f777a9b3b9daad1f60be1bf944d38",
-      "span_id": "c20b939337783778"
-    }
-  }
-}
-```
+> When `LOG_SERIALIZED=true` (Docker default), the same fields are emitted as a structured JSON envelope.
 
 > **Grafana — Loki log explorer**
 > ![Grafana Loki log explorer](docs/images/loki-explore.png)
@@ -464,9 +435,7 @@ Everything else (message body, `span_id`, `http_method`, `http_path`, `duration_
 
 ### 🔍 Traces — Tempo
 
-Distributed traces are produced by the **OTel Python SDK** using a combination of auto-instrumentation and manual spans. `FastAPIInstrumentor` automatically creates a root HTTP span for every inbound request — capturing method, route, status code, and duration without any code changes. `HTTPXClientInstrumentor` wraps every outbound `httpx` call and injects the W3C `traceparent` header, propagating the trace context to downstream services. For deeper visibility, manual child spans are created in selected handlers (`/trace-nested`, `/background-task`) to represent discrete units of work within a single request.
-
-All spans are batched by `BatchSpanProcessor` and exported to the OTel Collector via OTLP gRPC. The Collector forwards them to **Tempo**, where they are stored on local disk and indexed by `trace_id` — no external index or object storage required (configured in `docker/tempo-config.yml`). Traces are queryable in Grafana using **TraceQL**.
+Distributed traces are produced by the **OTel Python SDK** — `FastAPIInstrumentor` for inbound requests, `HTTPXClientInstrumentor` for outbound calls, and manual child spans in selected handlers. All spans are exported to the OTel Collector via OTLP gRPC and stored in **Tempo**, queryable via **TraceQL**.
 
 Trace pipeline:
 
@@ -617,14 +586,6 @@ sum by (level) (count_over_time({service_name="fastapi-app"} [1m]))
 { rootSpan.traceID = "4bf92f3577b34da6a3ce929d0e0e4736" }
 ```
 
-**Key attributes for this project** (not exhaustive — see the [OTel semantic conventions](https://opentelemetry.io/docs/specs/semconv/) for the full list):
-
-- `resource.service.name` — set to `fastapi-app` via the OTel SDK `Resource`
-- `span.http.route` — FastAPI route template, set by `FastAPIInstrumentor`
-- `span.http.status_code` — HTTP response status code
-- `duration` — total span duration (supports `ms`, `s` units)
-- `status` — OTel span status: `ok`, `error`, `unset`
-
 </details>
 
 ---
@@ -691,6 +652,28 @@ The datasource provisioning file (`docker/grafana/provisioning/datasources/datas
 > **Metrics → Trace (Exemplars)**
 > ![Grafana exemplar drill-down to Tempo](docs/images/prometheus-exemplars.png)
 > *In a Grafana histogram panel, enable **Exemplars** (toggle), run the query — exemplar dots appear on the chart. Click a dot, then click **Query with exemplar** to open the corresponding trace in Tempo.*
+
+---
+## 🔬 Code Quality
+
+```bash
+# Install pre-commit hooks (required once after cloning)
+uv run pre-commit install
+
+# Lint
+uv run ruff check .
+
+# Format
+uv run ruff format .
+
+# Type check
+uv run mypy
+
+# Run all pre-commit hooks
+uv run pre-commit run --all-files
+```
+
+Pre-commit hooks run automatically on every `git commit` (Ruff lint → Ruff format → Mypy).
 
 ---
 
