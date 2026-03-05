@@ -783,9 +783,9 @@ If the collector receives data but Tempo/Loki/Prometheus do not, the issue is in
 
 ## 🤝 Feedback & Contributing
 
-Found a bug, have a question, or want to share feedback? Feel free to [open an issue](https://github.com/mouakos/fastapi-monitoring-observability/issues) or [start a discussion](https://github.com/mouakos/fastapi-monitoring-observability/discussions).
+**Feedback & questions** — open a [GitHub Discussion](https://github.com/mouakos/fastapi-monitoring-observability/discussions) for questions, ideas, or general feedback.
 
-Read the [CONTRIBUTING.md](CONTRIBUTING.md) guide before submitting a pull request.
+**Bug reports** — open a [GitHub Issue](https://github.com/mouakos/fastapi-monitoring-observability/issues) for confirmed bugs or actionable feature requests.
 
 ---
 
