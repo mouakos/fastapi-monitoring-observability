@@ -14,8 +14,14 @@ from app.settings import config
 router = APIRouter()
 _tracer = trace.get_tracer(__name__)
 
+# ---------------------------------------------------------------------------
+# General
+# ---------------------------------------------------------------------------
 
-@router.get("/", response_model=dict[str, str], summary="Api Root")
+_general = APIRouter(tags=["General"])
+
+
+@_general.get("/", response_model=dict[str, str], summary="Api Root")
 def read_root() -> dict[str, str]:
     """Return a welcome message."""
     return {
@@ -23,13 +29,20 @@ def read_root() -> dict[str, str]:
     }
 
 
-@router.get("/info", response_model=dict[str, str], summary="Application Info")
+@_general.get("/info", response_model=dict[str, str], summary="Application Info")
 def app_info() -> dict[str, str]:
     """Return application version and environment."""
     return {"version": config.api_version, "environment": config.environment}
 
 
-@router.get("/slow", summary="Slow request")
+# ---------------------------------------------------------------------------
+# Simulation
+# ---------------------------------------------------------------------------
+
+_simulation = APIRouter(tags=["Simulation"])
+
+
+@_simulation.get("/slow", summary="Slow request")
 async def slow_endpoint(delay: float = 2.0) -> dict[str, str]:
     """Simulate a slow endpoint by sleeping for a specified duration to test latency monitoring and alerting."""
     await sleep(delay)
@@ -37,7 +50,7 @@ async def slow_endpoint(delay: float = 2.0) -> dict[str, str]:
     return {"message": f"Response after {delay}s"}
 
 
-@router.get("/random-status", summary="Random Status")
+@_simulation.get("/random-status", summary="Random Status")
 def random_status() -> dict[str, str]:
     """Return a random HTTP status code (200, 300, 400, or 500) to test error rate monitoring and alerting."""
     status_codes = [200, 200, 300, 400, 500]
@@ -48,13 +61,20 @@ def random_status() -> dict[str, str]:
     return {"message": f"Success with status {status}"}
 
 
-@router.get("/crash", summary="Unhandled Exception")
+@_simulation.get("/crash", summary="Unhandled Exception")
 def crash() -> float:
     """Trigger an unhandled ZeroDivisionError to exercise the global exception handler."""
     return 1 / 0
 
 
-@router.get("/chain", summary="Distributed Trace Chain")
+# ---------------------------------------------------------------------------
+# Tracing
+# ---------------------------------------------------------------------------
+
+_tracing = APIRouter(tags=["Tracing"])
+
+
+@_tracing.get("/chain", summary="Distributed Trace Chain")
 async def chain() -> dict[str, str]:
     """Simulate a chain of dependent HTTP calls to test distributed tracing across services."""
     async with httpx.AsyncClient() as client:
@@ -65,7 +85,7 @@ async def chain() -> dict[str, str]:
     }
 
 
-@router.get("/trace-nested", summary="Nested Spans")
+@_tracing.get("/trace-nested", summary="Nested Spans")
 async def trace_nested() -> dict[str, str]:
     """Create two child spans to verify parent-child span relationships in Tempo."""
     with _tracer.start_as_current_span("step-1-validate") as span1:
@@ -93,7 +113,7 @@ async def _run_background_work(ctx: object) -> None:
         otel_context.detach(token)
 
 
-@router.get("/background-task", summary="Background Task Trace Propagation")
+@_tracing.get("/background-task", summary="Background Task Trace Propagation")
 async def background_task_endpoint(background_tasks: BackgroundTasks) -> dict[str, str]:
     """Endpoint that enqueues a background task to verify that OpenTelemetry trace context is correctly propagated to background work executed after the response is sent."""
     # Always capture the current context at the time of the request and pass it to the background task.
@@ -104,3 +124,12 @@ async def background_task_endpoint(background_tasks: BackgroundTasks) -> dict[st
     return {
         "message": "Response sent — background task running with propagated trace context (verify in Tempo)"
     }
+
+
+# ---------------------------------------------------------------------------
+# Combine all groups into the main router
+# ---------------------------------------------------------------------------
+
+router.include_router(_general)
+router.include_router(_simulation)
+router.include_router(_tracing)
